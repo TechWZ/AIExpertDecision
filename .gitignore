@@ -1,40 +1,44 @@
-# === Combined .gitignore ===
-# This file is for the AIExpertDecision workspace root.
-# All paths are relative to this directory (AIExpertDecision/) unless they are global patterns.
+# === AIExpertDecision Workspace .gitignore ===
+# For all projects within the AIExpertDecision workspace.
+# Paths are relative to this AIExpertDecision/ root directory.
 
-# Python related (Global patterns - apply from AIExpertDecision root downwards)
+# --- General Ignores ---
+# Operating System / IDE / Editor specific
+.DS_Store
+Thumbs.db
+*.swp
+*~
+.idea/
+.venv/ # Python virtual environment
+
+# Compiled Python files
 *.py[cod]
 *$py.class
 
-# Specific to ai-expert-simulator project
-ai-expert-simulator/__pycache__/
-ai-expert-simulator/backend/venv/
-
-# Environment variables (within ai-expert-simulator)
-ai-expert-simulator/.env
-ai-expert-simulator/*.env.*
-!ai-expert-simulator/.env.example
-
-# IDE / Editor / OS specific (Global patterns - apply from AIExpertDecision root downwards)
-.idea/
-*.swp
-*~
-.DS_Store
-Thumbs.db
-.vscode/ # Ignore all .vscode folders
-
-# VSCode specific
-# For the root AIExpertDecision workspace itself
-# .vscode/*
+# VSCode settings (globally ignored)
+# Add exceptions for specific files if needed, e.g. for workspace recommended extensions
+.vscode/
 # !.vscode/extensions.json
-# For the ai-expert-simulator project
-# ai-expert-simulator/.vscode/*
+
+
+# --- Project: ai-expert-simulator ---
+
+# Python specific for ai-expert-simulator
+ai-expert-simulator/__pycache__/
+
+# Environment configuration for ai-expert-simulator/backend
+# Ensure your actual .env file (with secrets) is NOT committed.
+ai-expert-simulator/backend/.env
+ai-expert-simulator/backend/*.env.*
+!ai-expert-simulator/backend/.env.example # Do not ignore the example env file, it should be committed
+
+# VSCode specific for ai-expert-simulator (if not covered by global .vscode/)
+# Example: to keep ai-expert-simulator specific extensions.json
 # !ai-expert-simulator/.vscode/extensions.json
 
-# --- ai-expert-simulator/frontend Specific ---
-# Rules originally from frontend/.gitignore, now prefixed with 'ai-expert-simulator/frontend/'
 
-# Frontend Node modules & build artifacts
+# --- Sub-project: ai-expert-simulator/frontend ---
+# Node.js / Frontend specific
 ai-expert-simulator/frontend/node_modules/
 ai-expert-simulator/frontend/dist/
 ai-expert-simulator/frontend/dist-ssr/
@@ -48,20 +52,26 @@ ai-expert-simulator/frontend/yarn-error.log*
 ai-expert-simulator/frontend/pnpm-debug.log*
 ai-expert-simulator/frontend/lerna-debug.log*
 
-# Frontend Editor/IDE specific files (within ai-expert-simulator/frontend)
-#ai-expert-simulator/frontend/.vscode/*
-#!ai-expert-simulator/frontend/.vscode/extensions.json
-
 # Other frontend specific ignores
 ai-expert-simulator/frontend/*.local
+
+# Editor specific files for frontend (e.g. Visual Studio solution/project files)
+# These are often covered by global ignores but can be made specific if needed.
 ai-expert-simulator/frontend/*.suo
 ai-expert-simulator/frontend/*.ntvs*
 ai-expert-simulator/frontend/*.njsproj
 ai-expert-simulator/frontend/*.sln
-ai-expert-simulator/frontend/*.sw?
+ai-expert-simulator/frontend/*.sw? # Editor swap files with extensions like .swa, .swb
 
-# --- ai-expert-simulator root-level specific log files ---
+# VSCode specific for ai-expert-simulator/frontend (if not covered by global .vscode/)
+# Example: to keep frontend specific extensions.json
+# !ai-expert-simulator/frontend/.vscode/extensions.json
+
+
+# --- Root-level logs for ai-expert-simulator (if any) ---
 # These were in the original ai-expert-simulator/.gitignore.
+# Kept for logs specifically at the ai-expert-simulator project root,
+# if not covered by ai-expert-simulator/frontend/ patterns.
 ai-expert-simulator/npm-debug.log
 ai-expert-simulator/yarn-error.log
 ai-expert-simulator/pnpm-debug.log
