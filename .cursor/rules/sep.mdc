@@ -1,0 +1,26 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+规则：前后端职责分离 (Separation of Concerns)
+明确划分前端（负责用户界面、交互逻辑、发送API请求）和后端（负责业务逻辑、数据处理、数据库交互、响应API请求）的职责。使用独立的应用或服务来实现。
+规则：基于API的通信 (API-Driven Communication)
+前后端通过定义清晰的 API 端点（如 RESTful 路由）进行通信。避免直接耦合。
+规则：标准化数据交换格式 (Standard Data Format)
+使用通用的、轻量级的数据格式（如 JSON）在前后端之间传递数据。
+规则：前端异步处理网络请求 (Asynchronous Frontend Requests)
+在前端使用 async/await、Promises 等机制处理 API 调用等耗时操作，防止阻塞 UI，提升用户体验。
+规则：后端处理特定路由和方法 (Backend Route Handling)
+在后端为每个 API 端点和 HTTP 方法（GET, POST, PUT, DELETE 等）编写明确的处理器（Route Handler/Controller）来执行相应逻辑。
+规则：显式配置跨域资源共享 (Explicit CORS Configuration)
+在后端配置 CORS 策略，明确允许来自特定前端源（域名/端口）的请求，尤其是在开发环境中。
+规则：前端进行状态管理 (Frontend State Management)
+利用前端框架提供的状态管理工具（如 React useState, useReducer, Context API, 或 Redux/Zustand）来管理 UI 状态、用户输入和从后端获取的数据。
+规则：后端提供明确的响应 (Clear Backend Responses)
+后端 API 应返回明确的 HTTP 状态码（如 200, 201, 400, 404, 500）和结构化的响应体（通常是 JSON），包含成功信息或清晰的错误描述。
+规则：环境隔离与配置管理 (Environment & Configuration)
+将配置（如 API 密钥、数据库连接字符串、端口号、开发/生产模式标志）与代码分离，使用环境变量 (.env) 或配置文件 (config.py) 进行管理。
+规则：基本的错误处理 (Basic Error Handling)
+
+在前端处理网络请求失败、数据解析错误等情况。在后端进行输入验证和处理内部错误，并向前台返回有意义的错误信息。

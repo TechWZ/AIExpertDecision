@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI专家决策模拟系统 - HTML原型</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            display: flex;
+            margin: 0;
+            min-height: 100vh;
+            background-color: #f0f2f6;
+        }
+        #sidebar {
+            width: 250px;
+            background-color: #ffffff;
+            padding: 20px;
+            border-right: 1px solid #e0e0e0;
+            box-shadow: 2px 0 5px rgba(0,0,0,0.05);
+            display: flex;
+            flex-direction: column;
+        }
+        #sidebar h2 {
+            margin-top: 0;
+            font-size: 1.4rem;
+            color: #0d47a1;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        #sidebar nav ul {
+            list-style: none;
+            padding: 0;
+        }
+        #sidebar nav li {
+            margin-bottom: 10px;
+        }
+        #sidebar nav a {
+            text-decoration: none;
+            color: #333;
+            display: block;
+            padding: 10px 15px;
+            border-radius: 5px;
+            transition: background-color 0.2s ease;
+        }
+        #sidebar nav a:hover, #sidebar nav a.active {
+            background-color: #e3f2fd;
+            color: #0d47a1;
+            font-weight: bold;
+        }
+        #sidebar .footer {
+            margin-top: auto;
+            font-size: 0.8em;
+            color: #666;
+            border-top: 1px solid #eee;
+            padding-top: 10px;
+        }
+        #main-content {
+            flex-grow: 1;
+            padding: 30px;
+            overflow-y: auto;
+        }
+        .page {
+            display: none; /* Hide all pages by default */
+        }
+        .page.active {
+            display: block; /* Show only the active page */
+        }
+        .header-gradient {
+            background: linear-gradient(to right, #4f39fa, #49aeff);
+            color: white;
+            padding: 1rem 1.5rem;
+            border-radius: 8px;
+            margin-bottom: 1.5rem;
+            font-weight: bold;
+            font-size: 1.5rem;
+        }
+        .section-header {
+            font-size: 1.8rem;
+            font-weight: bold;
+            margin-top: 2rem;
+            margin-bottom: 1rem;
+            color: #0d47a1;
+            border-bottom: 2px solid #2196F3;
+            padding-bottom: 0.5rem;
+        }
+        .card {
+            background-color: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .expert-card {
+            border: 1px solid #e0e0e0;
+            border-left: 5px solid #2196F3;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .prompt-area {
+            background-color: #f9f9f9;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 15px;
+            font-family: monospace;
+            white-space: pre-wrap;
+            margin-bottom: 15px;
+            min-height: 150px;
+        }
+        .score-pill, .match-score, .model-badge, .vote-accept, .vote-revise, .vote-reject {
+            color: white;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-weight: bold;
+            font-size: 0.9em;
+            display: inline-block;
+            margin-left: 5px;
+        }
+        .score-pill { background-color: #2196F3; }
+        .match-score { background-color: #4caf50; }
+        .model-badge { background-color: #e3f2fd; color: #0d47a1; }
+        .vote-accept { background-color: #4caf50; }
+        .vote-revise { background-color: #ff9800; }
+        .vote-reject { background-color: #f44336; }
+        .research-summary {
+            padding: 1rem;
+            background-color: #f8f9fa;
+            border-left: 3px solid #6c757d;
+            margin-bottom: 1rem;
+            border-radius: 5px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 1rem;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        .tabs {
+            display: flex;
+            border-bottom: 1px solid #ccc;
+            margin-bottom: 1rem;
+        }
+        .tab-button {
+            padding: 10px 20px;
+            cursor: pointer;
+            border: none;
+            background-color: #eee;
+            margin-right: 5px;
+            border-radius: 5px 5px 0 0;
+        }
+        .tab-button.active {
+            background-color: #ccc;
+            font-weight: bold;
+        }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        button, input[type="submit"] {
+            background-color: #2196F3;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: background-color 0.2s ease;
+        }
+        button:hover, input[type="submit"]:hover {
+            background-color: #0d47a1;
+        }
+        input[type="text"], textarea, select {
+            width: calc(100% - 22px); /* Account for padding/border */
+            padding: 10px;
+            margin-bottom: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        .columns {
+            display: flex;
+            gap: 20px;
+        }
+        .column {
+            flex: 1;
+        }
+    </style>
+</head>
+<body>
+    <div id="sidebar">
+        <h2>AI专家决策模拟系统</h2>
+        <nav>
+            <ul>
+                <li><a href="#home" class="active" onclick="showPage('home', this)">🏠 首页</a></li>
+                <li><a href="#submit" onclick="showPage('submit', this)">📝 提交研究内容</a></li>
+                <li><a href="#expert" onclick="showPage('expert', this)">👩‍🔬 专家决策</a></li>
+                <li><a href="#results" onclick="showPage('results', this)">📊 结果分析</a></li>
+                <li><a href="#template" onclick="showPage('template', this)">⚙️ 模板管理</a></li>
+            </ul>
+        </nav>
+        <div class="footer">
+            <p>版本: MVP 0.5 (原型)</p>
+            <p>© 2023 AI专家决策模拟系统</p>
+        </div>
+    </div>
+
+    <div id="main-content">
+        <!-- 首页 -->
+        <div id="home" class="page active">
+            <div class="header-gradient">AI专家决策模拟系统</div>
+            <p>
+                欢迎使用AI专家决策模拟系统。该系统使用先进的人工智能技术，
+                模拟不同领域专家对您的研究内容进行评审，提供多角度的专业意见。
+            </p>
+            <h3>使用流程</h3>
+            <ol>
+                <li><strong>提交研究内容</strong> - 输入您的研究标题、领域和内容，或上传相关文件</li>
+                <li><strong>专家决策</strong> - 系统将推荐合适的专家角色，您可以选择需要的专家进行评审</li>
+                <li><strong>结果分析</strong> - 查看专家评审结果，导出报告</li>
+            </ol>
+            <p>点击左侧菜单开始使用系统。</p>
+            <div class="section-header">使用说明</div>
+            <ul>
+                <li>系统使用AI技术模拟专家决策，但不能替代真实专家意见</li>
+                <li>研究内容越详细，评审结果越准确</li>
+                <li>您可以自定义专家角色和评审模型 (在"模板管理"中)</li>
+                <li>评审结果可以导出为PDF或文本格式</li>
+            </ul>
+        </div>
+
+        <!-- 提交研究内容 -->
+        <div id="submit" class="page">
+            <div class="header-gradient">提交研究内容</div>
+            <form id="research-form">
+                <div class="form-group">
+                    <label for="research-title">研究标题</label>
+                    <input type="text" id="research-title" name="research-title" placeholder="输入您的研究标题">
+                </div>
+                <div class="form-group">
+                    <label for="research-field">研究领域</label>
+                    <select id="research-field" name="research-field">
+                        <option>医学</option>
+                        <option>计算机科学</option>
+                        <option>生物学</option>
+                        <option>物理学</option>
+                        <option>化学</option>
+                        <option>经济学</option>
+                        <option>心理学</option>
+                        <option>其他</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="research-content">研究内容</label>
+                    <textarea id="research-content" name="research-content" rows="10" placeholder="在此详细描述您的研究内容、方法、结果等..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="research-file">或上传研究文件</label>
+                    <input type="file" id="research-file" name="research-file">
+                </div>
+                <button type="submit">提交研究内容</button>
+            </form>
+        </div>
+
+        <!-- 专家决策 -->
+        <div id="expert" class="page">
+            <div class="header-gradient">专家决策</div>
+
+            <div class="section-header">研究内容概要</div>
+            <div class="research-summary card">
+                <p><strong>标题:</strong> [示例研究标题]</p>
+                <p><strong>领域:</strong> [示例研究领域]</p>
+                <p><strong>内容摘要:</strong> [此处显示研究内容的前500字...]</p>
+                <details>
+                    <summary>查看完整内容</summary>
+                    <p>[此处显示完整研究内容]</p>
+                </details>
+            </div>
+
+            <div class="section-header">专家角色推荐</div>
+            <div class="columns">
+                <div class="column">
+                    <div class="expert-card">
+                        <h4>临床专家 <span class='match-score'>85% 匹配</span></h4>
+                        <p>作为临床领域专家，我将特别关注研究成果的临床转化价值和实际应用可行性。</p>
+                        <input type="checkbox" id="expert1" name="expert1" checked> <label for="expert1">选择此专家</label>
+                        <div>
+                            <label for="model1">选择模型引擎:</label>
+                            <select id="model1" name="model1">
+                                <option selected>claude-3-opus - Claude最先进的模型...</option>
+                                <option>gpt-4 - 最强大的GPT模型...</option>
+                                <!-- 其他模型选项 -->
+                            </select>
+                            <div style="font-size:0.8em; background-color:#f1f8e9; padding:5px; margin-top:5px; border-left: 3px solid #7cb342;">
+                                <strong>推荐理由:</strong> Claude模型对医学术语理解更为准确...
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="column">
+                    <div class="expert-card">
+                        <h4>基础科学家 <span class='match-score'>78% 匹配</span></h4>
+                        <p>作为基础科学领域专家，我将重点评估研究的原创性和科学创新价值。</p>
+                        <input type="checkbox" id="expert2" name="expert2" checked> <label for="expert2">选择此专家</label>
+                         <div>
+                            <label for="model2">选择模型引擎:</label>
+                            <select id="model2" name="model2">
+                                <option>claude-3-opus - Claude最先进的模型...</option>
+                                <option selected>gpt-4 - 最强大的GPT模型...</option>
+                                <!-- 其他模型选项 -->
+                            </select>
+                            <div style="font-size:0.8em; background-color:#f1f8e9; padding:5px; margin-top:5px; border-left: 3px solid #7cb342;">
+                                <strong>推荐理由:</strong> GPT-4在科学论证和方法评估方面表现出色...
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                 <div class="column">
+                    <div class="expert-card">
+                        <h4>方法学统计专家 <span class='match-score'>92% 匹配</span></h4>
+                        <p>作为方法学和统计学专家，我将重点关注研究方案的科学设计和方法学的严谨性。</p>
+                        <input type="checkbox" id="expert3" name="expert3" checked> <label for="expert3">选择此专家</label>
+                         <div>
+                            <label for="model3">选择模型引擎:</label>
+                            <select id="model3" name="model3">
+                                <option>claude-3-opus - Claude最先进的模型...</option>
+                                <option selected>gpt-4-turbo - GPT-4的优化版本...</option>
+                                <!-- 其他模型选项 -->
+                            </select>
+                            <div style="font-size:0.8em; background-color:#f1f8e9; padding:5px; margin-top:5px; border-left: 3px solid #7cb342;">
+                                <strong>推荐理由:</strong> GPT-4-Turbo适合评估技术路线...
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <details style="margin-bottom: 20px;">
+                <summary>添加自定义专家</summary>
+                <div class="card">
+                    <input type="text" placeholder="专家名称">
+                    <textarea placeholder="专家描述" rows="3"></textarea>
+                    <button>添加</button>
+                </div>
+            </details>
+
+            <div class="section-header">评审提示词</div>
+             <div class="columns">
+                <div class="column" style="flex: 3;">
+                    <label for="prompt-expert-select">选择专家角色生成提示词:</label>
+                    <select id="prompt-expert-select" name="prompt-expert-select">
+                        <option>临床专家</option>
+                        <option>基础科学家</option>
+                        <option>方法学统计专家</option>
+                        <!-- 选中的专家 -->
+                    </select>
+                    <label for="prompt-preview" style="margin-top: 10px;">提示词预览:</label>
+                    <div id="prompt-preview" class="prompt-area">
+作为一位{专家类型}，我将对提交的科研选题进行专业评估。
+项目名称：{项目名称}
+项目类型：{项目类型}
+
+{项目描述}
+
+请从以下维度对该科研选题进行全面评估...
+[此处显示生成的提示词]
+                    </div>
+                    <label for="prompt-edit">编辑提示词:</label>
+                    <textarea id="prompt-edit" rows="8">[此处允许编辑提示词]</textarea>
+                </div>
+                <div class="column" style="flex: 1;">
+                    <label>提示词操作</label>
+                    <button style="display:block; width:100%; margin-bottom:10px;">生成评审提示词</button>
+                    <button style="display:block; width:100%; margin-bottom:10px;">智能优化提示词</button>
+                    <button style="display:block; width:100%; margin-bottom:10px;">保存提示词模板</button>
+                </div>
+            </div>
+
+
+            <div class="section-header">评审流程选择</div>
+            <div>
+                <input type="radio" id="review-score" name="review-process" value="score" checked>
+                <label for="review-score">专家评价打分</label>
+                <input type="radio" id="review-vote" name="review-process" value="vote">
+                <label for="review-vote">专家投票</label>
+            </div>
+
+            <button style="margin-top: 20px; width: 100%;">开始评审</button>
+        </div>
+
+        <!-- 结果分析 -->
+        <div id="results" class="page">
+            <div class="header-gradient">评审结果分析</div>
+            <details style="margin-bottom: 20px;">
+                <summary>评审设置</summary>
+                 <div class="card">
+                    <p><strong>研究标题:</strong> [示例研究标题]</p>
+                    <p><strong>研究领域:</strong> [示例研究领域]</p>
+                    <p><strong>评审流程:</strong> [专家评价打分/专家投票]</p>
+                    <p><strong>选定专家及模型:</strong></p>
+                    <ul>
+                        <li>临床专家 <span class='match-score'>85% 匹配</span> <span class='model-badge'>claude-3-opus</span></li>
+                        <li>基础科学家 <span class='match-score'>78% 匹配</span> <span class='model-badge'>gpt-4</span></li>
+                        <li>方法学统计专家 <span class='match-score'>92% 匹配</span> <span class='model-badge'>gpt-4-turbo</span></li>
+                    </ul>
+                </div>
+            </details>
+
+            <!-- 评分结果 -->
+            <div id="score-results" class="results-section">
+                <div class="section-header">专家评分</div>
+                <h3>综合评分: <span class='score-pill'>8.2/10</span></h3>
+                 <div class="card">
+                    <h4>专家评分对比 (图表占位符)</h4>
+                    <div style="height: 250px; background-color: #eee; display:flex; align-items:center; justify-content:center;">[柱状图/评分图表区域]</div>
+                </div>
+                 <div class="card">
+                    <h4>评分汇总表</h4>
+                    <table>
+                        <thead><tr><th>专家</th><th>评分</th><th>使用模型</th></tr></thead>
+                        <tbody>
+                            <tr><td>临床专家</td><td>8.5/10</td><td>claude-3-opus</td></tr>
+                            <tr><td>基础科学家</td><td>7.8/10</td><td>gpt-4</td></tr>
+                            <tr><td>方法学统计专家</td><td>8.3/10</td><td>gpt-4-turbo</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="section-header">详细评审意见</div>
+                <details open class="card">
+                    <summary>临床专家 (评分: 8.5/10, 模型: claude-3-opus)</summary>
+                    <p><strong>评分:</strong> <span class='score-pill'>8.5/10</span></p>
+                    <p><strong>评审意见:</strong> [临床专家的详细评审意见...]</p>
+                </details>
+                 <details class="card">
+                    <summary>基础科学家 (评分: 7.8/10, 模型: gpt-4)</summary>
+                    <p><strong>评分:</strong> <span class='score-pill'>7.8/10</span></p>
+                    <p><strong>评审意见:</strong> [基础科学家的详细评审意见...]</p>
+                </details>
+            </div>
+
+            <!-- 投票结果 (如果选择了投票流程) -->
+            <div id="vote-results" class="results-section" style="display:none;">
+                <div class="section-header">专家投票结果</div>
+                <div class="card">
+                    <h4>投票结果统计 (图表占位符)</h4>
+                    <div style="height: 250px; background-color: #eee; display:flex; align-items:center; justify-content:center;">[柱状图/饼图区域]</div>
+                </div>
+                 <div class="card">
+                     <h4>投票汇总表</h4>
+                    <table>
+                        <thead><tr><th>专家</th><th>投票</th><th>使用模型</th></tr></thead>
+                        <tbody>
+                            <tr><td>临床专家</td><td>支持</td><td>claude-3-opus</td></tr>
+                            <tr><td>基础科学家</td><td>中立</td><td>gpt-4</td></tr>
+                            <tr><td>方法学统计专家</td><td>支持</td><td>gpt-4-turbo</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="section-header">详细评审理由</div>
+                 <details open class="card">
+                    <summary>临床专家 (投票: 支持, 模型: claude-3-opus)</summary>
+                    <p><strong>投票决定:</strong> <span class='vote-accept'>支持</span></p>
+                    <p><strong>评审理由:</strong> [临床专家的详细评审理由...]</p>
+                </details>
+                 <details class="card">
+                    <summary>基础科学家 (投票: 中立, 模型: gpt-4)</summary>
+                    <p><strong>投票决定:</strong> <span class='vote-revise'>中立</span></p>
+                    <p><strong>评审理由:</strong> [基础科学家的详细评审理由...]</p>
+                </details>
+            </div>
+
+
+            <div class="section-header">导出结果</div>
+            <div class="card">
+                <label>选择导出格式:</label>
+                <input type="radio" id="export-pdf" name="export-format" value="pdf" checked>
+                <label for="export-pdf">PDF</label>
+                <input type="radio" id="export-txt" name="export-format" value="txt">
+                <label for="export-txt">文本文件</label>
+                <br><br>
+                <button>导出评审结果</button>
+                 <a href="#" download style="margin-left: 15px; display: none;">下载报告</a>
+            </div>
+
+             <button onclick="showPage('home', document.querySelector('#sidebar nav a[href='#home']'))" style="margin-top: 20px;">返回首页</button>
+
+        </div>
+
+        <!-- 模板管理 -->
+        <div id="template" class="page">
+            <div class="header-gradient">提示词模板与专家管理</div>
+            <div class="tabs">
+                <button class="tab-button active" onclick="showTemplateTab('tab-prompts', this)">提示词模板管理</button>
+                <button class="tab-button" onclick="showTemplateTab('tab-experts', this)">专家信息管理</button>
+                <button class="tab-button" onclick="showTemplateTab('tab-dimensions', this)">维度管理</button>
+            </div>
+
+            <!-- 提示词模板管理 -->
+            <div id="tab-prompts" class="tab-content active">
+                <h3>提示词模板管理</h3>
+                <div class="card">
+                     <table>
+                        <thead><tr><th>ID</th><th>模板名称</th><th>模板内容</th><th>类型</th></tr></thead>
+                        <tbody>
+                            <tr><td>1</td><td>开场白</td><td>作为一位{专家类型}...</td><td>template</td></tr>
+                            <tr><td>2</td><td>项目概述</td><td>项目名称：{项目名称}...</td><td>template</td></tr>
+                            <!-- 更多模板行 -->
+                        </tbody>
+                    </table>
+                </div>
+                 <details>
+                     <summary>添加/编辑模板</summary>
+                     <div class="card">
+                         <input type="text" placeholder="模板名称">
+                         <textarea placeholder="模板内容" rows="4"></textarea>
+                         <select>
+                             <option>template</option>
+                             <option>prompt</option>
+                             <!-- 其他类型 -->
+                         </select>
+                         <button>保存模板</button>
+                     </div>
+                 </details>
+            </div>
+
+            <!-- 专家信息管理 -->
+            <div id="tab-experts" class="tab-content">
+                <h3>专家信息管理</h3>
+                 <div class="card">
+                     <table>
+                        <thead><tr><th>ID</th><th>专家名称</th><th>专家描述</th><th>关注维度(ID)</th></tr></thead>
+                        <tbody>
+                            <tr><td>1</td><td>临床专家</td><td>作为临床领域专家...</td><td>2, 5, 8, 9</td></tr>
+                            <tr><td>2</td><td>基础科学家</td><td>作为基础科学领域专家...</td><td>1, 3, 6, 7</td></tr>
+                            <!-- 更多专家行 -->
+                        </tbody>
+                    </table>
+                 </div>
+                  <details>
+                     <summary>添加/编辑专家</summary>
+                     <div class="card">
+                         <input type="text" placeholder="专家名称">
+                         <textarea placeholder="专家描述" rows="3"></textarea>
+                         <label>选择关注维度:</label>
+                         <!-- 多选框占位符 -->
+                         <div>[多选框区域]</div>
+                         <button>保存专家</button>
+                     </div>
+                 </details>
+            </div>
+
+            <!-- 维度管理 -->
+            <div id="tab-dimensions" class="tab-content">
+                 <h3>评估维度管理</h3>
+                 <div class="card">
+                     <table>
+                        <thead><tr><th>ID</th><th>维度名称</th><th>维度描述</th></tr></thead>
+                        <tbody>
+                            <tr><td>1</td><td>原创性</td><td>评估项目概念的新颖程度...</td></tr>
+                            <tr><td>2</td><td>转化性</td><td>评估研究成果向实际应用转化...</td></tr>
+                            <!-- 更多维度行 -->
+                        </tbody>
+                    </table>
+                </div>
+                 <details>
+                     <summary>添加/编辑维度</summary>
+                     <div class="card">
+                         <input type="text" placeholder="维度名称">
+                         <textarea placeholder="维度描述" rows="3"></textarea>
+                         <button>保存维度</button>
+                     </div>
+                 </details>
+                 <hr>
+                 <h3>数据库导出</h3>
+                 <button>导出数据库为Excel</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function showPage(pageId, clickedLink) {
+            // Hide all pages
+            const pages = document.querySelectorAll('.page');
+            pages.forEach(page => page.classList.remove('active'));
+
+            // Show the selected page
+            const activePage = document.getElementById(pageId);
+            if (activePage) {
+                activePage.classList.add('active');
+            }
+
+            // Update active link in sidebar
+            const links = document.querySelectorAll('#sidebar nav a');
+            links.forEach(link => link.classList.remove('active'));
+            if (clickedLink) {
+                clickedLink.classList.add('active');
+            }
+
+             // Show/hide results sections based on example process
+            if(pageId === 'results') {
+                // Example: Show score results by default
+                showResultsSection('score-results');
+                // You might add logic here based on the actual review_process value if it were dynamic
+            }
+        }
+
+         function showTemplateTab(tabId, clickedButton) {
+            // Hide all tab contents
+            const contents = document.querySelectorAll('.tab-content');
+            contents.forEach(content => content.classList.remove('active'));
+
+            // Show the selected tab content
+            const activeContent = document.getElementById(tabId);
+            if (activeContent) {
+                activeContent.classList.add('active');
+            }
+
+            // Update active tab button style
+             const buttons = document.querySelectorAll('.tab-button');
+            buttons.forEach(button => button.classList.remove('active'));
+            if (clickedButton) {
+                clickedButton.classList.add('active');
+            }
+        }
+
+        function showResultsSection(sectionId) {
+             const sections = document.querySelectorAll('.results-section');
+            sections.forEach(section => section.style.display = 'none');
+            const activeSection = document.getElementById(sectionId);
+            if(activeSection) {
+                activeSection.style.display = 'block';
+            }
+        }
+
+        // Initial setup: Show the home page
+        document.addEventListener('DOMContentLoaded', () => {
+            showPage('home', document.querySelector('#sidebar nav a[href="#home"]'));
+            showTemplateTab('tab-prompts', document.querySelector('.tab-button')); // Show first template tab
+        });
+    </script>
+</body>
+</html> 

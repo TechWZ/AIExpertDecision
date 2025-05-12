@@ -1,0 +1,67 @@
+# === Combined .gitignore ===
+# This file is for the AIExpertDecision workspace root.
+# All paths are relative to this directory (AIExpertDecision/) unless they are global patterns.
+
+# Python related (Global patterns - apply from AIExpertDecision root downwards)
+*.py[cod]
+*$py.class
+
+# Specific to ai-expert-simulator project
+ai-expert-simulator/__pycache__/
+ai-expert-simulator/backend/venv/
+
+# Environment variables (within ai-expert-simulator)
+ai-expert-simulator/.env
+ai-expert-simulator/*.env.*
+!ai-expert-simulator/.env.example
+
+# IDE / Editor / OS specific (Global patterns - apply from AIExpertDecision root downwards)
+.idea/
+*.swp
+*~
+.DS_Store
+Thumbs.db
+.vscode/ # Ignore all .vscode folders
+
+# VSCode specific
+# For the root AIExpertDecision workspace itself
+# .vscode/*
+# !.vscode/extensions.json
+# For the ai-expert-simulator project
+# ai-expert-simulator/.vscode/*
+# !ai-expert-simulator/.vscode/extensions.json
+
+# --- ai-expert-simulator/frontend Specific ---
+# Rules originally from frontend/.gitignore, now prefixed with 'ai-expert-simulator/frontend/'
+
+# Frontend Node modules & build artifacts
+ai-expert-simulator/frontend/node_modules/
+ai-expert-simulator/frontend/dist/
+ai-expert-simulator/frontend/dist-ssr/
+
+# Frontend Logs
+ai-expert-simulator/frontend/logs/
+ai-expert-simulator/frontend/*.log
+ai-expert-simulator/frontend/npm-debug.log*
+ai-expert-simulator/frontend/yarn-debug.log*
+ai-expert-simulator/frontend/yarn-error.log*
+ai-expert-simulator/frontend/pnpm-debug.log*
+ai-expert-simulator/frontend/lerna-debug.log*
+
+# Frontend Editor/IDE specific files (within ai-expert-simulator/frontend)
+#ai-expert-simulator/frontend/.vscode/*
+#!ai-expert-simulator/frontend/.vscode/extensions.json
+
+# Other frontend specific ignores
+ai-expert-simulator/frontend/*.local
+ai-expert-simulator/frontend/*.suo
+ai-expert-simulator/frontend/*.ntvs*
+ai-expert-simulator/frontend/*.njsproj
+ai-expert-simulator/frontend/*.sln
+ai-expert-simulator/frontend/*.sw?
+
+# --- ai-expert-simulator root-level specific log files ---
+# These were in the original ai-expert-simulator/.gitignore.
+ai-expert-simulator/npm-debug.log
+ai-expert-simulator/yarn-error.log
+ai-expert-simulator/pnpm-debug.log
