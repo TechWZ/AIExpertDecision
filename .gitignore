@@ -9,7 +9,8 @@ Thumbs.db
 *.swp
 *~
 .idea/
-.venv/ # Python virtual environment
+# Python virtual environment
+.venv/
 
 # Compiled Python files
 *.py[cod]
@@ -18,8 +19,6 @@ Thumbs.db
 # VSCode settings (globally ignored)
 # Add exceptions for specific files if needed, e.g. for workspace recommended extensions
 .vscode/
-# !.vscode/extensions.json
-
 
 # --- Project: ai-expert-simulator ---
 
@@ -30,12 +29,8 @@ ai-expert-simulator/__pycache__/
 # Ensure your actual .env file (with secrets) is NOT committed.
 ai-expert-simulator/backend/.env
 ai-expert-simulator/backend/*.env.*
-!ai-expert-simulator/backend/.env.example # Do not ignore the example env file, it should be committed
-
-# VSCode specific for ai-expert-simulator (if not covered by global .vscode/)
-# Example: to keep ai-expert-simulator specific extensions.json
-# !ai-expert-simulator/.vscode/extensions.json
-
+# Do not ignore the example env file, it should be committed
+!ai-expert-simulator/backend/.env.example 
 
 # --- Sub-project: ai-expert-simulator/frontend ---
 # Node.js / Frontend specific
@@ -61,12 +56,8 @@ ai-expert-simulator/frontend/*.suo
 ai-expert-simulator/frontend/*.ntvs*
 ai-expert-simulator/frontend/*.njsproj
 ai-expert-simulator/frontend/*.sln
-ai-expert-simulator/frontend/*.sw? # Editor swap files with extensions like .swa, .swb
-
-# VSCode specific for ai-expert-simulator/frontend (if not covered by global .vscode/)
-# Example: to keep frontend specific extensions.json
-# !ai-expert-simulator/frontend/.vscode/extensions.json
-
+# Editor swap files with extensions like .swa, .swb
+ai-expert-simulator/frontend/*.sw? 
 
 # --- Root-level logs for ai-expert-simulator (if any) ---
 # These were in the original ai-expert-simulator/.gitignore.
