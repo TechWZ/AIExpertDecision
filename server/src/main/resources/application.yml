@@ -37,6 +37,17 @@ spring:
   # profiles:
   #   active:
   #   - 
+  ai:
+    volcengine:
+      chat:
+        api-key: YOUR_API_KEY # 请替换为您的豆包API Key
+        secret-key: YOUR_SECRET_KEY # 请替换为您的豆包Secret Key
+        # 可选配置
+        # endpoint: https://ark.cn-beijing.volces.com
+        # model: ep-20240610032610-z60bk # 默认模型
+        # options:
+        #   temperature: 0.7
+        #   top-p: 0.9
 server:
   port: 5002
   servlet:
