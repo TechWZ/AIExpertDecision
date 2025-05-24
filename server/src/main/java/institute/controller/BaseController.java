@@ -13,6 +13,7 @@ import com.github.pagehelper.PageInfo;
 
 import institute.pojo.Chat; // 确保 Chat 类已导入
 import institute.pojo.Directory;
+import institute.service.DeepSeekAiService; // Import DeepSeekAiService
 import institute.service.DirectoriesService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -25,13 +26,19 @@ public class BaseController {
     @Autowired
     private DirectoriesService directoriesService;
 
+    @Autowired // Inject DeepSeekAiService
+    private DeepSeekAiService deepSeekAiService;
+
     @GetMapping("getChat")
     // api doc
     @Operation(summary = "会话模块-获取会话")
     // @Parameter(name="id", description = "查询参数-目录id", required = true)
     public Chat getChat(){
-        // 创建一个 Chat 对象的假数据
-        Chat mockChat = new Chat("session_123", "与AI的演示对话", "这是最后一条消息的预览。");
+        // Call DeepSeekAiService to get a completion
+        String aiResponse = deepSeekAiService.getCompletion("Hello, this is a test prompt for the AI.");
+
+        // 创建一个 Chat 对象的假数据, using AI response for lastMessagePreview
+        Chat mockChat = new Chat("session_123", "与AI的演示对话", aiResponse);
         // 如果 Chat 类有 setId 方法并且你需要设置它：
         // mockChat.setId(1L); 
         // lastActivityTimestamp 会在 Chat 构造函数中自动设置为 LocalDateTime.now()
