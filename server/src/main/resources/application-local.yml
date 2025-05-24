@@ -1,5 +1,0 @@
-spring:
-  ai:
-    openai:
-      # api-key: sk-147e4b643c3348c19862d64d29c9a397 # 请将 YOUR_ACTUAL_DEEPSEEK_API_KEY 替换为你的真实 DeepSeek API Key
-      api-key: sk-pkbmvkhyxzsygtesyopaapizfkzdvfsknujkunotepvuyswp
