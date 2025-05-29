@@ -40,7 +40,8 @@ export const useChatStore = defineStore('chat', () => {
     },
   ]);
 
-  const activeSessionId = ref(sessions.value.length > 0 ? sessions.value[0].id : null);
+  // 初始化时不选择任何会话，以显示欢迎界面
+  const activeSessionId = ref(null);
 
   // Getters (computed properties)
   const currentChatSession = computed(() => {
@@ -53,9 +54,29 @@ export const useChatStore = defineStore('chat', () => {
   });
 
   // Actions
+  // 创建新会话
+  function createNewSession(title) {
+    const now = new Date();
+    const newSession = {
+      id: 'session' + Date.now(),
+      title: title || '新对话',
+      lastMessage: '开始新的对话',
+      timestamp: `${now.getFullYear()}年${now.getMonth() + 1}月${now.getDate()}日`,
+      messages: []
+    };
+    
+    sessions.value.unshift(newSession); // 添加到列表开头
+    selectSession(newSession.id); // 自动选择新会话
+    return newSession.id;
+  }
+  
   async function selectSession(sessionId) {
     activeSessionId.value = sessionId;
 
+    if (!sessionId) {
+      return; // 允许设置为 null 以显示欢迎界面
+    }
+    
     if (sessionId === 'session2') {
       const sessionToUpdate = sessions.value.find(s => s.id === 'session2');
       if (sessionToUpdate) {
@@ -108,11 +129,11 @@ export const useChatStore = defineStore('chat', () => {
     }
   }
 
-  function addMessageToCurrentChat(messageText, senderType) {
+  function addMessageToCurrentChat(messageText, senderType, customId = null) {
     const session = currentChatSession.value;
     if (session) {
       const newMessage = {
-        id: Date.now(),
+        id: customId || Date.now(),
         text: messageText,
         sender: senderType,
         avatar: senderType === 'user' ? '/user-avatar.png' : '/AigenMed.jpeg',
@@ -153,6 +174,17 @@ export const useChatStore = defineStore('chat', () => {
     }
   }
 
+  // 添加根据ID删除消息的功能
+  function removeMessage(messageId) {
+    const session = currentChatSession.value;
+    if (session) {
+      const index = session.messages.findIndex(msg => msg.id === messageId);
+      if (index !== -1) {
+        session.messages.splice(index, 1);
+      }
+    }
+  }
+
   return {
     sessions,
     activeSessionId,
@@ -160,5 +192,7 @@ export const useChatStore = defineStore('chat', () => {
     currentChatMessages,
     selectSession,
     addMessageToCurrentChat,
+    createNewSession,
+    removeMessage,
   };
 });

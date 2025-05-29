@@ -5,60 +5,42 @@ import Footer from './components/Footer.vue'
 </script>
 
 <template>
-  <el-container class="app-container">
-    <Header />
-    <el-main class="main-content">
-      <router-view></router-view>
-    </el-main>
-    <Footer class="footer-content" />
-  </el-container>
+  <div id="app-wrapper">
+    <el-container class="app-container">
+      <Header />
+      <el-main class="main-content">
+        <router-view></router-view>
+      </el-main>
+      <Footer class="footer-content" />
+    </el-container>
+  </div>
 </template>
 
 <style scoped>
+#app-wrapper {
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  margin: 0;
+  padding: 0;
+}
+
 .app-container {
   display: flex;
   flex-direction: column;
-  min-height: 100vh;
+  height: 100vh;
+  overflow: hidden;
 }
 
 .main-content {
   flex: 1;
-  /* padding: 0; Remove default padding if router-view or its children handle it */
-  /* The common-layout div and its direct el-row/el-col might not be needed if Header is fixed or sticky */
+  padding: 0;
+  overflow: hidden;
 }
 
 .footer-content {
-  flex-shrink: 0; /* Ensure footer doesn't shrink */
-  /* Optional: Add some padding or margin if needed */
+  flex-shrink: 0;
 }
-
-/* Remove old styles if they are no longer relevant */
-/* header {
-  line-height: 1.5;
-}
-
-.logo {
-  display: block;
-  margin: 0 auto 2rem;
-}
-
-@media (min-width: 1024px) {
-  header {
-    display: flex;
-    place-items: center;
-    padding-right: calc(var(--section-gap) / 2);
-  }
-
-  .logo {
-    margin: 0 2rem 0 0;
-  }
-
-  header .wrapper {
-    display: flex;
-    place-items: flex-start;
-    flex-wrap: wrap;
-  }
-} */
 </style>
 
 <style>
@@ -67,5 +49,6 @@ html, body, #app {
   height: 100%;
   margin: 0;
   padding: 0;
+  overflow: hidden;
 }
 </style>

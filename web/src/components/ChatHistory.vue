@@ -21,7 +21,7 @@ const addNewChat = () => {
 
 <template>
   <div class="chat-history-container">
-    <el-scrollbar height="calc(100vh - 120px)"> <!-- Reverted height adjustment -->
+    <el-scrollbar style="height: 100vh;">
       <el-card shadow="never" class="history-card">
         <template #header>
           <div class="card-header">
@@ -53,15 +53,14 @@ const addNewChat = () => {
 
 <style scoped>
 .chat-history-container {
-  padding: 10px;
-  height: 100%;
-  box-sizing: border-box;
+  height: 100vh;
+  overflow: hidden;
 }
 
 .history-card {
-  height: 100%;
-  display: flex;
-  flex-direction: column;
+  height: 100vh;
+  border-radius: 0;
+  border: none;
 }
 
 .history-card :deep(.el-card__header) {
@@ -71,8 +70,8 @@ const addNewChat = () => {
 
 .history-card :deep(.el-card__body) {
   padding: 0;
-  flex-grow: 1;
-  overflow: hidden; /* Important for scrollbar to work within card body */
+  height: calc(100vh - 60px);
+  overflow: hidden;
 }
 
 .card-header {
@@ -82,14 +81,15 @@ const addNewChat = () => {
 }
 
 .history-menu {
-  border-right: none; /* Remove default border from el-menu */
-  height: 100%; /* Ensure menu takes full height of its container */
+  border-right: none;
+  height: 100%;
+  overflow-y: auto;
 }
 
 .history-menu .el-menu-item {
   height: auto;
   line-height: normal;
-  padding: 10px 15px !important; /* Override default padding */
+  padding: 10px 15px !important;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
@@ -97,7 +97,7 @@ const addNewChat = () => {
 }
 
 .history-menu .el-menu-item.is-active {
-  background-color: #ecf5ff; /* Element Plus active color */
+  background-color: #ecf5ff;
   color: #409EFF;
 }
 

@@ -15,6 +15,10 @@ const router = createRouter({
             path: '/aiexpertdecision',
             component: () => import('@/components/AIExpertDecision.vue'),
         },
+        {
+            path: '/expertlist',
+            component: () => import('@/components/ExpertList.vue'),
+        },
         // {
         //     path: '/login', 
         //     component: () => import('@/components/login.vue')

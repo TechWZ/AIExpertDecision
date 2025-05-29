@@ -1,189 +1,224 @@
 <script setup>
-import { ref, nextTick, watch, onMounted, computed } from 'vue';
-import { Promotion } from '@element-plus/icons-vue';
-import { useChatStore } from '@/stores/chatStore'; 
+import { ref } from 'vue';
+import { useRouter } from 'vue-router';
+import { Promotion, QuestionFilled } from '@element-plus/icons-vue';
+import { ElMessage } from 'element-plus';
 
-const chatStore = useChatStore();
+const router = useRouter();
 const newMessage = ref('');
-const messageContainer = ref(null); 
 
-// Get messages from the store
-const messages = computed(() => chatStore.currentChatMessages);
-const activeSessionId = computed(() => chatStore.activeSessionId); // Make sure activeSessionId is available
+const exampleQuestions = ref([
+  '我需要评估一个医疗项目的风险与收益',
+  '帮我分析这份临床试验数据的关键发现和建议',
+  '我需要针对这个复杂医疗案例的专家决策支持'
+]);
 
-const scrollToBottom = async () => {
-  await nextTick();
-  if (messageContainer.value && messageContainer.value.wrapRef) {
-    const scrollWrapper = messageContainer.value.wrapRef;
-    // A small delay can sometimes help ensure the DOM has fully updated
-    setTimeout(() => {
-        scrollWrapper.scrollTop = scrollWrapper.scrollHeight;
-    }, 0);
-  } else if (messageContainer.value && typeof messageContainer.value.setScrollTop === 'function') {
-    // Fallback for older or different el-scrollbar versions if wrapRef is not directly available
-    // This might require checking the specific version of Element Plus if issues persist
-    const internalScrollbar = messageContainer.value.scrollbar$; // Example, might vary
-    if (internalScrollbar && internalScrollbar.wrapRef) {
-        internalScrollbar.wrapRef.scrollTop = internalScrollbar.wrapRef.scrollHeight;
-    }
-  }
+const handleExampleClick = (example) => {
+  newMessage.value = example;
 };
 
-const sendMessage = () => {
+const sendMessage = async () => {
   if (newMessage.value.trim() === '') return;
-  chatStore.addMessageToCurrentChat(newMessage.value, 'user');
+  
+  try {
+    ElMessage.info('正在为您推荐专家角色...');
+    
+    const response = await fetch('http://39.103.63.72:5001/api/submit_content', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        content: newMessage.value.trim()
+      })
+    });
+    
+    if (response.ok) {
+      const result = await response.json();
+      ElMessage.success('专家角色推荐成功');
+      console.log('推荐结果:', result);
+      // 这里可以根据返回的结果进行后续处理
+    } else {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+  } catch (error) {
+    console.error('请求失败:', error);
+    ElMessage.error('推荐专家角色失败，请稍后重试');
+  }
+  
   newMessage.value = '';
-  // scrollToBottom will be triggered by the watch on messages
 };
 
-// Scroll to bottom when messages change or the active session changes
-watch(
-  () => messages.value,
-  () => {
-    scrollToBottom();
-  },
-  { deep: true, immediate: true } // immediate true to scroll on initial load of a session
-);
-
-// Initial scroll to bottom if messages are already present (e.g., when switching sessions)
-onMounted(() => {
-  // Ensure store is initialized and potentially a session is active
-  if (messages.value.length > 0) {
-    scrollToBottom();
-  }
-});
+const goToExpertList = () => {
+  router.push('/expertlist');
+};
 
 </script>
+
 <template>
-  <el-container class="chat-container">
-    <el-main class="chat-messages-area">
-      <el-scrollbar ref="messageContainer" height="100%">
-        <div v-if="!activeSessionId || messages.length === 0" class="no-messages">
-          <p v-if="!activeSessionId">请从左侧选择一个会话开始聊天。</p>
-          <p v-else>当前会话没有消息。发送一条消息开始吧！</p>
-        </div>
-        <div v-else v-for="message in messages" :key="message.id" class="message-item" :class="['message-' + message.sender]">
-          <el-avatar :src="message.sender === 'bot' ? '/AigenMed.jpeg' : message.avatar" class="message-avatar"></el-avatar>
-          <div class="message-content">
-            <el-card shadow="hover" class="message-card">
-              {{ message.text }}
+  <div class="chat-container">
+    <!-- 中上部分欢迎内容 -->
+    <el-row class="welcome-row">
+      <el-col :span="24">
+        <div class="welcome-content">
+          <el-avatar :size="80" :src="'/AigenMed.jpeg'"/>
+          <h1 class="welcome-title">AI专家决策系统</h1>
+          <p class="welcome-subtitle">输入您的决策需求，AI将为您提供专业分析和建议</p>
+          
+          <el-divider content-position="center" class="welcome-divider">
+            <el-icon><Promotion /></el-icon>
+            <span style="margin-left: 8px;">您可以尝试提问</span>
+          </el-divider>
+          
+          <div class="example-questions">
+            <el-card 
+              v-for="(example, index) in exampleQuestions" 
+              :key="index"
+              class="example-card" 
+              shadow="hover"
+              @click="handleExampleClick(example)"
+            >
+              <div class="example-content">
+                <el-icon class="example-icon"><QuestionFilled /></el-icon>
+                <span class="example-text">{{ example }}</span>
+              </div>
             </el-card>
           </div>
         </div>
-      </el-scrollbar>
-    </el-main>
-    <el-footer class="chat-input-area">
-      <el-input
-        v-model="newMessage"
-        placeholder="输入消息..."
-        @keyup.enter="sendMessage"
-        clearable
-        size="large"
-        :disabled="!chatStore.activeSessionId"
-      >
-        <template #append>
-          <el-button :icon="Promotion" @click="sendMessage" type="primary" :disabled="!chatStore.activeSessionId" />
-        </template>
-      </el-input>
-    </el-footer>
-  </el-container>
+      </el-col>
+    </el-row>
+
+    <!-- 输入区域 -->
+    <el-row class="input-row">
+      <el-col :span="24">
+        <div class="input-container">
+          <el-input
+            v-model="newMessage"
+            type="textarea"
+            placeholder="输入您的决策需求..."
+            :autosize="{ minRows: 4, maxRows: 6 }" 
+            resize="none"
+            class="message-input"
+          />
+          <div class="button-group">
+            <el-button
+              type="primary"
+              size="large"
+              :disabled="!newMessage.trim()"
+              @click="sendMessage"
+              class="send-button"
+            >
+              推荐专家角色
+            </el-button>
+            <el-button
+              size="large"
+              class="custom-button"
+              @click="goToExpertList"
+            >
+              自定义专家
+            </el-button>
+          </div>
+        </div>
+      </el-col>
+    </el-row>
+  </div>
 </template>
+
 <style scoped>
 .chat-container {
-  height: calc(100vh - 100px); /* Adjust based on your layout, assuming some header/footer elsewhere */
+  height: 100%;
   display: flex;
   flex-direction: column;
-  border: 1px solid #ebeef5;
-  border-radius: 4px;
-  overflow: hidden; /* Ensures footer stays at bottom */
+  background-color: #f8f9fa;
 }
 
-.chat-messages-area {
-  flex-grow: 1;
-  padding: 20px;
-  overflow-y: auto; /* This will be handled by el-scrollbar */
-  background-color: #f9fafb;
-  position: relative; /* Needed for absolute positioning of debug line */
+.welcome-row {
+  height: 66.67%;
+  padding: 40px 20px;
 }
 
-.message-item {
-  display: flex;
-  margin-bottom: 15px;
-  align-items: flex-end; /* Align avatar with bottom of text card */
+.welcome-content {
+  text-align: center;
+  max-width: 600px;
+  margin: 0 auto;
 }
 
-.message-avatar {
-  margin-right: 10px;
-  margin-left: 10px;
-  flex-shrink: 0; /* Prevent avatar from shrinking */
+.welcome-title {
+  font-size: 32px;
+  font-weight: 600;
+  margin-bottom: 12px;
 }
 
-.message-user {
-  flex-direction: row-reverse; /* User messages on the right */
-}
-
-.message-user .message-avatar {
-  margin-left: 10px;
-  margin-right: 0;
-}
-
-.message-user .message-content {
-  align-items: flex-end; /* Align card to the right */
-}
-
-.message-user .message-card {
-  background-color: #d9ecff; /* Light blue for user messages */
-  border-color: #d9ecff;
-}
-
-.message-content {
-  display: flex;
-  flex-direction: column;
-  max-width: 70%;
-}
-
-.message-card {
-  padding: 10px 15px;
-  border-radius: 10px;
-  word-wrap: break-word; /* Ensure long words break */
-  background-color: #ffffff; /* White for bot messages */
-  border: 1px solid #e4e7ed;
-}
-
-
-.chat-input-area {
-  padding: 15px 20px;
-  background-color: #ffffff;
-  border-top: 1px solid #ebeef5;
-  height: auto; /* Allow footer to size based on content */
-  display: flex; /* Use flex for better alignment */
-  align-items: center; /* Center items vertically */
-}
-
-.chat-input-area .el-input {
-  flex-grow: 1; /* Input takes available space */
-}
-
-.chat-input-area .el-button {
-  margin-left: 10px; /* Space between input and button */
-}
-
-/* Ensure el-scrollbar takes full height of its container */
-.el-scrollbar {
-  height: 100%;
-}
-
-.el-scrollbar :deep(.el-scrollbar__wrap) {
-  overflow-x: hidden; /* Hide horizontal scrollbar */
-}
-
-.no-messages {
-  display: flex;
-  flex-direction: column; /* Stack paragraphs */
-  justify-content: center;
-  align-items: center;
-  height: 100%;
-  color: #909399;
+.welcome-subtitle {
   font-size: 16px;
+  color: #606266;
+  margin-bottom: 32px;
+}
+
+.welcome-divider {
+  margin: 32px 0;
+}
+
+.example-questions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.example-card {
+  cursor: pointer;
+}
+
+.example-content {
+  display: flex;
+  align-items: center;
+  padding: 16px;
+  gap: 12px;
+}
+
+.example-icon {
+  color: var(--el-color-primary);
+  font-size: 18px;
+}
+
+.example-text {
+  flex: 1;
+  text-align: left;
+  font-size: 14px;
+}
+
+.input-row {
+  height: 33.33%;
+  padding-top: 40px;
+}
+
+.input-container {
+  max-width: 600px;
+  margin: 0 auto;
+  display: flex;
+  gap: 12px;
+  height: 100%;
+}
+
+.message-input {
+  flex: 1;
+}
+
+.button-group {
+  display: flex;
+  flex-direction: column;
+  row-gap: 10px;
+  width: 140px;
+}
+
+.send-button {
+  font-size: 14px;
+  width: 100%;
+}
+
+.custom-button {
+  font-size: 14px;
+  width: 100%;
+  margin-left: 0;
 }
 </style>
