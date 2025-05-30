@@ -126,15 +126,19 @@ const goToExpertList = () => {
 
 <style scoped>
 .chat-container {
-  height: 100%;
+  height: 100vh;
   display: flex;
   flex-direction: column;
   background-color: #f8f9fa;
 }
 
 .welcome-row {
-  height: 66.67%;
-  padding: 40px 20px;
+  flex: 1;
+  padding: 20px;
+  display: flex;
+  align-items: center;
+  min-height: 0;
+  /* overflow-y: auto; */
 }
 
 .welcome-content {
@@ -188,8 +192,9 @@ const goToExpertList = () => {
 }
 
 .input-row {
-  height: 33.33%;
-  padding-top: 40px;
+  flex-shrink: 0;
+  padding: 20px;
+  min-height: 200px;
 }
 
 .input-container {
@@ -197,7 +202,6 @@ const goToExpertList = () => {
   margin: 0 auto;
   display: flex;
   gap: 12px;
-  height: 100%;
 }
 
 .message-input {

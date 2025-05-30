@@ -11,7 +11,7 @@ import Footer from './components/Footer.vue'
       <el-main class="main-content">
         <router-view></router-view>
       </el-main>
-      <Footer class="footer-content" />
+      <!-- <Footer class="footer-content" /> -->
     </el-container>
   </div>
 </template>
