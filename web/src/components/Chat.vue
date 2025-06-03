@@ -3,8 +3,10 @@ import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { Promotion, QuestionFilled } from '@element-plus/icons-vue';
 import { ElMessage } from 'element-plus';
+import { useExpertStore } from '@/stores/expertStore';
 
 const router = useRouter();
+const expertStore = useExpertStore();
 const newMessage = ref('');
 
 const exampleQuestions = ref([
@@ -23,24 +25,13 @@ const sendMessage = async () => {
   try {
     ElMessage.info('正在为您推荐专家角色...');
     
-    const response = await fetch('http://39.103.63.72:5001/api/submit_content', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        content: newMessage.value.trim()
-      })
-    });
+    const result = await expertStore.fetchRecommendedExperts(newMessage.value.trim());
     
-    if (response.ok) {
-      const result = await response.json();
-      ElMessage.success('专家角色推荐成功');
-      console.log('推荐结果:', result);
-      // 这里可以根据返回的结果进行后续处理
-    } else {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
+    ElMessage.success('专家角色推荐成功');
+    console.log('推荐结果:', result);
+    
+    // 跳转到专家列表页面
+    router.push('/expertlist');
   } catch (error) {
     console.error('请求失败:', error);
     ElMessage.error('推荐专家角色失败，请稍后重试');
@@ -50,6 +41,12 @@ const sendMessage = async () => {
 };
 
 const goToExpertList = () => {
+  router.push('/expertlist');
+};
+
+const loadTestData = () => {
+  expertStore.loadTestData();
+  ElMessage.success('测试数据已加载');
   router.push('/expertlist');
 };
 
@@ -116,6 +113,14 @@ const goToExpertList = () => {
               @click="goToExpertList"
             >
               自定义专家
+            </el-button>
+            <el-button
+              size="large"
+              type="success"
+              class="test-button"
+              @click="loadTestData"
+            >
+              测试数据
             </el-button>
           </div>
         </div>
@@ -221,6 +226,12 @@ const goToExpertList = () => {
 }
 
 .custom-button {
+  font-size: 14px;
+  width: 100%;
+  margin-left: 0;
+}
+
+.test-button {
   font-size: 14px;
   width: 100%;
   margin-left: 0;
