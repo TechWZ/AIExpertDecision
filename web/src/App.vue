@@ -2,53 +2,35 @@
 // import { createRouter } from 'vue-router' // This import seems unused here
 import Header from './components/Header.vue'
 import Footer from './components/Footer.vue'
+import ChatHistory from './components/ChatHistory.vue';
+import Steps from './components/Steps.vue'
 </script>
 
 <template>
-  <div id="app-wrapper">
-    <el-container class="app-container">
+  <div class="common-layout">
+    <el-header style="padding: 0;">
       <Header />
-      <el-main class="main-content">
+    </el-header>
+    <el-container>
+      <el-aside width="10%">
+        <!-- <ChatHistory /> -->
+      </el-aside>
+
+      <el-main style="padding: 0;">
         <router-view></router-view>
       </el-main>
-      <!-- <Footer class="footer-content" /> -->
+
+      <el-aside width="10%" class="steps-aside">
+        <Steps />
+      </el-aside>
     </el-container>
   </div>
 </template>
 
 <style scoped>
-#app-wrapper {
-  width: 100vw;
-  height: 100vh;
-  overflow: hidden;
-  margin: 0;
-  padding: 0;
-}
-
-.app-container {
+.steps-aside {
   display: flex;
-  flex-direction: column;
-  height: 100vh;
-  overflow: hidden;
-}
-
-.main-content {
-  flex: 1;
-  padding: 0;
-  overflow: hidden;
-}
-
-.footer-content {
-  flex-shrink: 0;
-}
-</style>
-
-<style>
-/* Global styles if necessary, e.g., to ensure body/html take full height */
-html, body, #app {
-  height: 100%;
-  margin: 0;
-  padding: 0;
-  overflow: hidden;
+  align-items: center;
+  justify-content: center;
 }
 </style>

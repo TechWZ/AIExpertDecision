@@ -95,7 +95,6 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="expert-list-container">
     <el-row class="header-row">
       <el-col :span="24">
         <div class="header-content">
@@ -222,7 +221,7 @@ onMounted(() => {
     </el-row>
     
     <!-- 确认执行按钮 -->
-    <el-button type="primary" plain>Primary</el-button>
+    <el-button type="primary" plain class="centered-button">确认提交</el-button>
 
     <!-- 添加自定义专家对话框 -->
     <el-dialog v-model="dialogFormVisible" title="添加自定义专家" width="500">
@@ -249,17 +248,9 @@ onMounted(() => {
         </div>
       </template>
     </el-dialog>
-  </div>
 </template>
 
 <style scoped>
-.expert-list-container {
-  height: 100vh;
-  background-color: #f8f9fa;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
 
 .header-row {
   flex-shrink: 0;
@@ -309,5 +300,12 @@ onMounted(() => {
   display: flex;
   justify-content: center;
   align-items: center;
+}
+
+.centered-button {
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+  margin-top: 10%;
 }
 </style>

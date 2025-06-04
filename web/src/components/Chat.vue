@@ -4,9 +4,11 @@ import { useRouter } from 'vue-router';
 import { Promotion, QuestionFilled } from '@element-plus/icons-vue';
 import { ElMessage } from 'element-plus';
 import { useExpertStore } from '@/stores/expertStore';
+import { useStepsStore } from '@/stores/stepsStore';
 
 const router = useRouter();
 const expertStore = useExpertStore();
+const stepsStore = useStepsStore();
 const newMessage = ref('');
 
 const exampleQuestions = ref([
@@ -30,6 +32,9 @@ const sendMessage = async () => {
     ElMessage.success('专家角色推荐成功');
     console.log('推荐结果:', result);
     
+    // 更新步骤状态为1
+    stepsStore.setStep(1);
+    
     // 跳转到专家列表页面
     router.push('/expertlist');
   } catch (error) {
@@ -41,21 +46,24 @@ const sendMessage = async () => {
 };
 
 const goToExpertList = () => {
+  // 更新步骤状态为1
+  stepsStore.setStep(1);
   router.push('/expertlist');
 };
 
 const loadTestData = () => {
   expertStore.loadTestData();
   ElMessage.success('测试数据已加载');
+  // 更新步骤状态为1
+  stepsStore.setStep(1);
   router.push('/expertlist');
 };
 
 </script>
 
 <template>
-  <div class="chat-container">
     <!-- 中上部分欢迎内容 -->
-    <el-row class="welcome-row">
+    <el-row style="margin-top: 1%;">
       <el-col :span="24">
         <div class="welcome-content">
           <el-avatar :size="80" :src="'/AigenMed.jpeg'"/>
@@ -93,7 +101,7 @@ const loadTestData = () => {
             v-model="newMessage"
             type="textarea"
             placeholder="输入您的决策需求..."
-            :autosize="{ minRows: 4, maxRows: 6 }" 
+            :autosize="{ minRows: 4 }" 
             resize="none"
             class="message-input"
           />
@@ -126,25 +134,9 @@ const loadTestData = () => {
         </div>
       </el-col>
     </el-row>
-  </div>
 </template>
 
 <style scoped>
-.chat-container {
-  height: 100vh;
-  display: flex;
-  flex-direction: column;
-  background-color: #f8f9fa;
-}
-
-.welcome-row {
-  flex: 1;
-  padding: 20px;
-  display: flex;
-  align-items: center;
-  min-height: 0;
-  /* overflow-y: auto; */
-}
 
 .welcome-content {
   text-align: center;

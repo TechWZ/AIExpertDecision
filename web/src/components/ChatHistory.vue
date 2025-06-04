@@ -20,8 +20,6 @@ const addNewChat = () => {
 </script>
 
 <template>
-  <div class="chat-history-container">
-    <el-scrollbar style="height: 100vh;">
       <el-card shadow="never" class="history-card">
         <template #header>
           <div class="card-header">
@@ -47,18 +45,10 @@ const addNewChat = () => {
           </el-menu-item>
         </el-menu>
       </el-card>
-    </el-scrollbar>
-  </div>
 </template>
 
 <style scoped>
-.chat-history-container {
-  height: 100vh;
-  overflow: hidden;
-}
-
 .history-card {
-  height: 100vh;
   border-radius: 0;
   border: none;
 }
@@ -82,8 +72,6 @@ const addNewChat = () => {
 
 .history-menu {
   border-right: none;
-  height: 100%;
-  overflow-y: auto;
 }
 
 .history-menu .el-menu-item {
