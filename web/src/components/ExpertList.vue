@@ -1,17 +1,28 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
+import { useRouter } from 'vue-router'
 import dayjs from 'dayjs'
 import { ArrowDown, Check } from '@element-plus/icons-vue'
+import { ElMessage } from 'element-plus'
 import { useExpertStore } from '@/stores/expertStore'
 
 const now = new Date()
 const expertStore = useExpertStore()
+const router = useRouter()
 
 // 自定义专家数据
 const customExperts = ref([])
 
 // 获取推荐专家数据（来自API）
 const recommendedExperts = computed(() => expertStore.recommendedExperts)
+
+// 获取专家提示词数据
+const expertPrompts = computed(() => expertStore.expertPrompts)
+
+// 按钮是否可点击的状态
+const promptButtonsEnabled = ref(false)
+
+
 
 // 只显示API返回的推荐专家数据，不提供默认数据
 const tableData = computed(() => {
@@ -52,9 +63,9 @@ const handleExpertSelect = (value, index) => {
   } else {
     tableData.value[index].selected = value
   }
-  
+
   const expert = tableData.value[index]
-  
+
   if (value) {
     // 选中时，添加到选中列表并初始化输入内容
     if (!selectedExperts.value.find(e => e.id === expert.id)) {
@@ -88,199 +99,274 @@ const confirmAddExpert = () => {
   dialogFormVisible.value = false
 }
 
+
+
 onMounted(() => {
   // 组件挂载时检查是否有推荐专家数据
   console.log('推荐专家数据:', recommendedExperts.value)
+  
+  // 监听专家提示词更新事件
+  window.addEventListener('expert-prompts-updated', handlePromptsUpdated)
 })
+
+onUnmounted(() => {
+  // 清理事件监听器
+  window.removeEventListener('expert-prompts-updated', handlePromptsUpdated)
+})
+
+// 处理提示词更新事件
+const handlePromptsUpdated = () => {
+  console.log('收到 expert-prompts-updated 事件，启用按钮')
+  promptButtonsEnabled.value = true
+  console.log('promptButtonsEnabled 设置为:', promptButtonsEnabled.value)
+  console.log('当前 expertPrompts:', expertPrompts.value)
+}
+
+// 写入系统提示词
+const writeSystemPrompt = (expertId) => {
+  const prompt = expertPrompts.value[expertId]
+  if (prompt) {
+    expertInputs.value[expertId] = prompt
+  } else {
+    ElMessage.warning('该专家暂无可用的系统提示词')
+  }
+}
+
+// 确认提交，跳转到报告页面
+const confirmSubmit = async () => {
+  try {
+    // 构建请求数据
+    const requestData = {
+      content: "原始研究内容",
+      selected_roles: []
+    }
+    
+    // 添加选中的专家数据
+    selectedExperts.value.forEach(expert => {
+      const prompt = expertInputs.value[expert.id] || ''
+      if (prompt.trim()) {
+        requestData.selected_roles.push({
+          role_name: expert.date,
+          prompt: prompt,
+          model_id: "deepseek-ai/DeepSeek-V3"
+        })
+      }
+    })
+    
+    // 添加自定义专家数据
+    customExperts.value.forEach(expert => {
+      requestData.selected_roles.push({
+        role_name: expert.role_name,
+        prompt: '',
+        model_id: "deepseek-ai/DeepSeek-V3"
+      })
+    })
+    
+    if (requestData.selected_roles.length === 0) {
+      ElMessage.warning('请先选择专家并填写提示词')
+      return
+    }
+    
+    // 立即打开新标签页
+    const reportWindow = window.open(router.resolve('/report').href, '_blank')
+    
+    ElMessage.info('正在生成分析报告...')
+    
+    // 调用API
+    const response = await fetch('http://39.103.63.72:5001/api/run_simulation', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(requestData)
+    })
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`)
+    }
+    
+    const result = await response.json()
+    
+    // 详细调试API返回的数据
+    console.log('API完整返回数据:', result)
+    console.log('API返回的results字段:', result.results)
+    
+    // 检查每个专家报告的长度
+    if (result.results && typeof result.results === 'object') {
+      Object.entries(result.results).forEach(([expertName, content]) => {
+        console.log(`${expertName} 报告长度:`, content ? content.length : 0)
+        console.log(`${expertName} 报告末尾100字符:`, content ? content.slice(-100) : 'null')
+      })
+    }
+    
+    // 将结果存储到sessionStorage中，供Report页面使用
+    const resultsJson = JSON.stringify(result.results)
+    console.log('存储到sessionStorage的数据大小:', resultsJson.length, '字符')
+    sessionStorage.setItem('reportResults', resultsJson)
+    
+    // 验证存储是否成功
+    const storedData = sessionStorage.getItem('reportResults')
+    console.log('从sessionStorage读取的数据大小:', storedData ? storedData.length : 0, '字符')
+    console.log('存储前后数据大小对比:', resultsJson.length === (storedData ? storedData.length : 0) ? '一致' : '不一致')
+    
+    ElMessage.success('分析报告生成成功')
+    
+    // 刷新报告页面以显示新数据
+    if (reportWindow && !reportWindow.closed) {
+      reportWindow.location.reload()
+    }
+    
+  } catch (error) {
+    console.error('生成报告失败:', error)
+    ElMessage.error('生成报告失败，请稍后重试')
+  }
+}
 </script>
 
 <template>
-    <el-row class="header-row">
-      <el-col :span="24">
-        <div class="header-content">
-          <h1 class="page-title">自定义专家</h1>
-        </div>
-      </el-col>
-    </el-row>
-    
-    <el-row class="content-row">
-      <el-col :span="24">
-        <div class="content-area">
-          <el-row :gutter="20">
-            <el-col :span="12">
-              <el-card shadow="never" class="table-card">
-                <template #header>
-                  <h3>推荐专家</h3>
+  <el-row class="content-row" :gutter="20">
+    <el-col :span="12">
+      <el-card class="table-card">
+        <template #header>
+          <h3>推荐专家</h3>
+        </template>
+        <el-table :data="tableData" style="width: 100%">
+          <el-table-column fixed prop="date" label="专家" width="150" />
+          <el-table-column prop="name" label="匹配度（%）" width="120" />
+          <el-table-column label="大模型" width="150">
+            <template #default="scope">
+              <el-dropdown @command="(model) => handleModelSelect(model, scope.$index)">
+                <span class="el-dropdown-link">
+                  {{ scope.row.state }}
+                  <el-icon class="el-icon--right">
+                    <arrow-down />
+                  </el-icon>
+                </span>
+                <template #dropdown>
+                  <el-dropdown-menu>
+                    <el-dropdown-item command="GPT-4">GPT-4</el-dropdown-item>
+                    <el-dropdown-item command="Claude-3">Claude-3</el-dropdown-item>
+                    <el-dropdown-item command="Gemini">Gemini</el-dropdown-item>
+                    <el-dropdown-item command="ChatGLM">ChatGLM</el-dropdown-item>
+                    <el-dropdown-item command="文心一言">文心一言</el-dropdown-item>
+                  </el-dropdown-menu>
                 </template>
-                <el-table :data="tableData" style="width: 100%">
-                  <el-table-column fixed prop="date" label="专家" width="150" />
-                  <el-table-column prop="name" label="匹配度（%）" width="120" />
-                  <el-table-column label="大模型" width="150">
-                    <template #default="scope">
-                      <el-dropdown @command="(model) => handleModelSelect(model, scope.$index)">
-                        <span class="el-dropdown-link">
-                          {{ scope.row.state }}
-                          <el-icon class="el-icon--right">
-                            <arrow-down />
-                          </el-icon>
-                        </span>
-                        <template #dropdown>
-                          <el-dropdown-menu>
-                            <el-dropdown-item command="GPT-4">GPT-4</el-dropdown-item>
-                            <el-dropdown-item command="Claude-3">Claude-3</el-dropdown-item>
-                            <el-dropdown-item command="Gemini">Gemini</el-dropdown-item>
-                            <el-dropdown-item command="ChatGLM">ChatGLM</el-dropdown-item>
-                            <el-dropdown-item command="文心一言">文心一言</el-dropdown-item>
-                          </el-dropdown-menu>
-                        </template>
-                      </el-dropdown>
-                    </template>
-                  </el-table-column>
-                  <el-table-column fixed="right" label="" min-width="120">
-                    <template #default="scope">
-                      <div class="status-cell">
-                        <el-button 
-                          :type="scope.row.selected ? 'primary' : ''"
-                          :icon="scope.row.selected ? Check : ''"
-                          circle
-                          @click="handleExpertSelect(!scope.row.selected, scope.$index)"
-                        />
-                      </div>
-                    </template>
-                  </el-table-column>
-                </el-table>
-              </el-card>
-              <br>
-              <el-card shadow="never" class="table-card">
-                <template #header>
-                  <h3>自定义专家</h3>
-                </template>
-                <el-table :data="customExperts" style="width: 100%">
-                  <el-table-column fixed prop="role_name" label="专家" width="150" />
-                  <el-table-column label="大模型" width="120">
-                    <template #default="scope">
-                      <el-dropdown @command="(model) => handleCustomModelSelect(model, scope.$index)">
-                        <span class="el-dropdown-link">
-                          {{ scope.row.model }}
-                          <el-icon class="el-icon--right">
-                            <arrow-down />
-                          </el-icon>
-                        </span>
-                        <template #dropdown>
-                          <el-dropdown-menu>
-                            <el-dropdown-item command="GPT-4">GPT-4</el-dropdown-item>
-                            <el-dropdown-item command="Claude-3">Claude-3</el-dropdown-item>
-                            <el-dropdown-item command="Gemini">Gemini</el-dropdown-item>
-                            <el-dropdown-item command="ChatGLM">ChatGLM</el-dropdown-item>
-                            <el-dropdown-item command="文心一言">文心一言</el-dropdown-item>
-                          </el-dropdown-menu>
-                        </template>
-                      </el-dropdown>
-                    </template>
-                  </el-table-column>
-                  <el-table-column fixed="right" label="操作" min-width="120">
-                    <template #default="scope">
-                      <el-button
-                        link
-                        type="primary"
-                        size="small"
-                        @click.prevent="deleteRow(scope.$index)"
-                      >
-                        删除
-                      </el-button>
-                    </template>
-                  </el-table-column>
-                </el-table>
-                <el-button class="mt-4" style="width: 100%" @click="onAddItem">
-                  添加自定义专家
-                </el-button>
-              </el-card>
-            </el-col>
-            <el-col :span="12">
-              <!-- 提示词 -->
-              <div v-for="expert in selectedExperts" :key="expert.id" style="margin-bottom: 20px;">
-                <el-card style="max-width: 480px">
-                  <template #header>
-                    <div class="card-header">
-                      <span>{{ expert.date }}</span>
-                    </div>
-                  </template>
-                  <el-input
-                    v-model="expertInputs[expert.id]"
-                    style="width: 100%"
-                    :autosize="{ minRows: 2 }"
-                    type="textarea"
-                    placeholder="请输入提示词"
-                  />
-                </el-card>
+              </el-dropdown>
+            </template>
+          </el-table-column>
+          <el-table-column fixed="right" label="" min-width="120">
+            <template #default="scope">
+              <div class="status-cell">
+                <el-button :type="scope.row.selected ? 'primary' : ''" :icon="scope.row.selected ? Check : ''" circle
+                  @click="handleExpertSelect(!scope.row.selected, scope.$index)" />
               </div>
-            </el-col>
-          </el-row>
-        </div>
-      </el-col>
-    </el-row>
-    
-    <!-- 确认执行按钮 -->
-    <el-button type="primary" plain class="centered-button">确认提交</el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+      </el-card>
+      <br>
+      <el-card shadow="never" class="table-card">
+        <template #header>
+          <h3>自定义专家</h3>
+        </template>
+        <el-table :data="customExperts" style="width: 100%">
+          <el-table-column fixed prop="role_name" label="专家" width="150" />
+          <el-table-column label="大模型" width="120">
+            <template #default="scope">
+              <el-dropdown @command="(model) => handleCustomModelSelect(model, scope.$index)">
+                <span class="el-dropdown-link">
+                  {{ scope.row.model }}
+                  <el-icon class="el-icon--right">
+                    <arrow-down />
+                  </el-icon>
+                </span>
+                <template #dropdown>
+                  <el-dropdown-menu>
+                    <el-dropdown-item command="GPT-4">GPT-4</el-dropdown-item>
+                    <el-dropdown-item command="Claude-3">Claude-3</el-dropdown-item>
+                    <el-dropdown-item command="Gemini">Gemini</el-dropdown-item>
+                    <el-dropdown-item command="ChatGLM">ChatGLM</el-dropdown-item>
+                    <el-dropdown-item command="文心一言">文心一言</el-dropdown-item>
+                  </el-dropdown-menu>
+                </template>
+              </el-dropdown>
+            </template>
+          </el-table-column>
+          <el-table-column fixed="right" label="操作" min-width="120">
+            <template #default="scope">
+              <el-button link type="primary" size="small" @click.prevent="deleteRow(scope.$index)">
+                删除
+              </el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+        <el-button class="mt-4" style="width: 100%" @click="onAddItem">
+          添加自定义专家
+        </el-button>
+      </el-card>
+    </el-col>
+    <el-col :span="12">
+      <!-- 提示词 -->
+      <div v-for="expert in selectedExperts" :key="expert.id" style="margin-bottom: 20px;">
+        <el-card style="max-width: 480px">
+          <template #header>
+            <div class="card-header">
+              <span>{{ expert.date }}</span>
+              <el-button type="primary" size="small" 
+                :disabled="!promptButtonsEnabled || !expertPrompts[expert.id]"
+                @click="writeSystemPrompt(expert.id)">
+                写入系统提示词
+              </el-button>
+            </div>
+          </template>
+          <el-input v-model="expertInputs[expert.id]" style="width: 100%" :autosize="{ minRows: 2 }" type="textarea"
+            placeholder="请输入提示词" />
+        </el-card>
+      </div>
+    </el-col>
+  </el-row>
 
-    <!-- 添加自定义专家对话框 -->
-    <el-dialog v-model="dialogFormVisible" title="添加自定义专家" width="500">
-      <el-form :model="form">
-        <el-form-item label="专家名称" :label-width="formLabelWidth">
-          <el-input v-model="form.role_name" autocomplete="off" />
-        </el-form-item>
-        <el-form-item label="大模型" :label-width="formLabelWidth">
-          <el-select v-model="form.model" placeholder="请选择大模型">
-            <el-option label="GPT-4" value="GPT-4" />
-            <el-option label="Claude-3" value="Claude-3" />
-            <el-option label="Gemini" value="Gemini" />
-            <el-option label="ChatGLM" value="ChatGLM" />
-            <el-option label="文心一言" value="文心一言" />
-          </el-select>
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <div class="dialog-footer">
-          <el-button @click="dialogFormVisible = false">取消</el-button>
-          <el-button type="primary" @click="confirmAddExpert">
-            确认
-          </el-button>
-        </div>
-      </template>
-    </el-dialog>
+  <!-- 确认执行按钮 -->
+  <el-button type="primary" plain class="centered-button" @click="confirmSubmit">确认提交</el-button>
+
+  <!-- 添加自定义专家对话框 -->
+  <el-dialog v-model="dialogFormVisible" title="添加自定义专家" width="500">
+    <el-form :model="form">
+      <el-form-item label="专家名称" :label-width="formLabelWidth">
+        <el-input v-model="form.role_name" autocomplete="off" />
+      </el-form-item>
+      <el-form-item label="大模型" :label-width="formLabelWidth">
+        <el-select v-model="form.model" placeholder="请选择大模型">
+          <el-option label="GPT-4" value="GPT-4" />
+          <el-option label="Claude-3" value="Claude-3" />
+          <el-option label="Gemini" value="Gemini" />
+          <el-option label="ChatGLM" value="ChatGLM" />
+          <el-option label="文心一言" value="文心一言" />
+        </el-select>
+      </el-form-item>
+    </el-form>
+    <template #footer>
+      <div class="dialog-footer">
+        <el-button @click="dialogFormVisible = false">取消</el-button>
+        <el-button type="primary" @click="confirmAddExpert">
+          确认
+        </el-button>
+      </div>
+    </template>
+  </el-dialog>
 </template>
 
 <style scoped>
-
-.header-row {
-  flex-shrink: 0;
-  background-color: white;
-  border-bottom: 1px solid #e4e7ed;
-}
-
-.header-content {
-  display: flex;
-  align-items: center;
-  padding: 16px 24px;
-}
-
-.page-title {
-  font-size: 24px;
-  font-weight: 600;
-  margin: 0;
-  color: #303133;
-}
-
 .content-row {
   /* flex: 1; */
-  padding: 24px;
+  margin-top: 1%;
   /* overflow-y: auto; */
 }
 
-.content-area {
+/* .content-area {
   max-width: 1200px;
   margin: 0 auto;
-}
+} */
 
 .table-card h3 {
   margin: 0;
@@ -307,5 +393,11 @@ onMounted(() => {
   margin-left: auto;
   margin-right: auto;
   margin-top: 10%;
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 </style>

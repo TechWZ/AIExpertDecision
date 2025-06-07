@@ -7,7 +7,7 @@ const active = computed(() => stepsStore.activeStep)
 </script>
 
 <template>
-  <div style="height: 300px; max-width: 600px">
+  <div class="steps-wrapper">
     <el-steps direction="vertical" :active="active" finish-status="success">
       <el-step title="决策需求" description="" />
       <el-step title="专家信息" description=""/>
@@ -16,4 +16,14 @@ const active = computed(() => stepsStore.activeStep)
   </div>
 </template>
 
-<style scoped></style>
+<style scoped>
+.steps-wrapper {
+  overflow: hidden;
+
+  display: flex; 
+  position: fixed;
+  right: 0;
+  top: 60px; /* header的高度 */
+  bottom: 0;
+}
+</style>

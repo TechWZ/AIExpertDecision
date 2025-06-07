@@ -8,11 +8,11 @@ import org.springframework.ai.chat.prompt.Prompt;
 import java.util.List;
 
 @Service
-public class DeepSeekAiService { 
+public class DeepSeekService { 
 
     private final ChatClient chatClient;
 
-    public DeepSeekAiService(ChatClient.Builder chatClientBuilder) {
+    public DeepSeekService(ChatClient.Builder chatClientBuilder) {
         this.chatClient = chatClientBuilder.build();
         String response = chatClient.prompt("Tell me a joke").call().content();							
         System.out.println(response);

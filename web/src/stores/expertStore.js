@@ -5,6 +5,7 @@ import { ElMessage } from 'element-plus'
 export const useExpertStore = defineStore('expert', () => {
   // 状态数据
   const recommendedExperts = ref([])
+  const expertPrompts = ref({}) // 存储专家提示词，键为专家ID，值为提示词内容
   const isLoading = ref(false)
   const error = ref(null)
 
@@ -66,39 +67,52 @@ export const useExpertStore = defineStore('expert', () => {
     error.value = null
   }
 
-  // 添加测试数据
-  const loadTestData = () => {
-    recommendedExperts.value = [
-      {
-        id: 1001,
-        date: '心血管专家',
-        name: 95,
-        state: 'GPT-4',
-        selected: false,
-      },
-      {
-        id: 1002,
-        date: '肿瘤学专家', 
-        name: 88,
-        state: 'Claude-3',
-        selected: false,
-      },
-      {
-        id: 1003,
-        date: '神经内科专家',
-        name: 92,
-        state: 'GPT-4',
-        selected: false,
+  // 获取专家提示词
+  const fetchExpertPrompts = async (expertRoles, decisionRequirement) => {
+    try {
+      const response = await fetch('/AIExpertDecisionServer/generateExpertsPrompts', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          expertRoles: expertRoles,
+          decisionRequirement: decisionRequirement
+        })
+      })
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
       }
-    ]
-  }
+      
+      const result = await response.json()
+      console.log('专家提示词API返回结果:', result)
+      
+      // 存储专家提示词数据到状态中
+      if (result.aiResponse && result.aiResponse.expertPrompts) {
+        // API返回格式为 { aiResponse: { expertPrompts: { "专家名称": "提示词内容", ... } } }
+        Object.keys(result.aiResponse.expertPrompts).forEach(expertName => {
+          // 找到对应的专家ID
+          const expert = recommendedExperts.value.find(e => e.date === expertName)
+          if (expert) {
+            expertPrompts.value[expert.id] = result.aiResponse.expertPrompts[expertName]
+          }
+        })
+      }
+      
+      return result
+    } catch (err) {
+      console.error('获取专家提示词失败:', err)
+      throw err
+    }  }
 
   return {
     recommendedExperts,
+    expertPrompts,
     isLoading,
     error,
     fetchRecommendedExperts,
-    clearRecommendedExperts,
-    loadTestData
+    fetchExpertPrompts,
+    clearRecommendedExperts
   }
 })

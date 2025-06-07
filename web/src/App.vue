@@ -16,11 +16,11 @@ import Steps from './components/Steps.vue'
         <!-- <ChatHistory /> -->
       </el-aside>
 
-      <el-main style="padding: 0;">
+      <el-main style="padding: 0; overflow: hidden;">
         <router-view></router-view>
       </el-main>
 
-      <el-aside width="10%" class="steps-aside">
+      <el-aside width="10%">
         <Steps />
       </el-aside>
     </el-container>
@@ -28,9 +28,4 @@ import Steps from './components/Steps.vue'
 </template>
 
 <style scoped>
-.steps-aside {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
 </style>

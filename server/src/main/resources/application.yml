@@ -45,28 +45,6 @@ spring:
           model: Qwen/Qwen3-8B
           temperature: 1.3
 
-# 自定义LLM提供商的配置
-custom:
-  ai:
-    providers:
-      # DeepSeek模型配置
-      deepseek:
-        base-url: https://api.siliconflow.cn
-        api-key: ${DEEPSEEK_API_KEY} # 占位符，实际值在application-local.yml中
-        chat:
-          options:
-            model: deepseek-ai/DeepSeek-R1-Distill-Qwen-7B
-            temperature: 1.3
-      
-      # 另一个提供商(THUDM)模型配置
-      anotherprovider:
-        base-url: https://api.siliconflow.cn
-        api-key: ${ANOTHERPROVIDER_API_KEY} # 占位符，实际值在application-local.yml中
-        chat:
-          options:
-            model: THUDM/GLM-Z1-9B-0414
-            temperature: 1.3
-
 server:
   port: 5002
   servlet:

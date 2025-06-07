@@ -19,10 +19,10 @@ const router = createRouter({
             path: '/expertlist',
             component: () => import('@/components/ExpertList.vue'),
         },
-        // {
-        //     path: '/login', 
-        //     component: () => import('@/components/login.vue')
-        // },
+        {
+            path: '/report', 
+            component: () => import('@/components/Report.vue')
+        },
         { path: '/:pathMatch(.*)', component: () => import('@/components/PathError.vue') }
 
         /* 

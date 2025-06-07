@@ -24,10 +24,12 @@ const handleExampleClick = (example) => {
 const sendMessage = async () => {
   if (newMessage.value.trim() === '') return;
   
+  const userDecisionRequirement = newMessage.value.trim();
+  
   try {
     ElMessage.info('正在为您推荐专家角色...');
     
-    const result = await expertStore.fetchRecommendedExperts(newMessage.value.trim());
+    const result = await expertStore.fetchRecommendedExperts(userDecisionRequirement);
     
     ElMessage.success('专家角色推荐成功');
     console.log('推荐结果:', result);
@@ -35,8 +37,28 @@ const sendMessage = async () => {
     // 更新步骤状态为1
     stepsStore.setStep(1);
     
-    // 跳转到专家列表页面
+    // 立即跳转到专家列表页面，不等待提示词获取
     router.push('/expertlist');
+    
+    // 在后台异步获取专家提示词，不阻塞页面跳转
+    const expertRoles = result.roles?.map(role => role.role_name) || [];
+    if (expertRoles.length > 0) {
+      // 异步获取专家提示词，不使用 await
+      expertStore.fetchExpertPrompts(expertRoles, userDecisionRequirement)
+        .then(promptsResult => {
+          // 成功获取提示词后
+          console.log('专家提示词获取成功:', promptsResult);
+          ElMessage.success('专家提示词生成成功');
+          
+          // 触发事件通知ExpertList组件更新按钮状态
+          window.dispatchEvent(new CustomEvent('expert-prompts-updated'));
+        })
+        .catch(promptError => {
+          console.error('获取专家提示词失败:', promptError);
+          // 静默处理错误，不显示错误消息
+        });
+    }
+    
   } catch (error) {
     console.error('请求失败:', error);
     ElMessage.error('推荐专家角色失败，请稍后重试');
@@ -46,14 +68,6 @@ const sendMessage = async () => {
 };
 
 const goToExpertList = () => {
-  // 更新步骤状态为1
-  stepsStore.setStep(1);
-  router.push('/expertlist');
-};
-
-const loadTestData = () => {
-  expertStore.loadTestData();
-  ElMessage.success('测试数据已加载');
   // 更新步骤状态为1
   stepsStore.setStep(1);
   router.push('/expertlist');
@@ -121,14 +135,6 @@ const loadTestData = () => {
               @click="goToExpertList"
             >
               自定义专家
-            </el-button>
-            <el-button
-              size="large"
-              type="success"
-              class="test-button"
-              @click="loadTestData"
-            >
-              测试数据
             </el-button>
           </div>
         </div>
@@ -218,12 +224,6 @@ const loadTestData = () => {
 }
 
 .custom-button {
-  font-size: 14px;
-  width: 100%;
-  margin-left: 0;
-}
-
-.test-button {
   font-size: 14px;
   width: 100%;
   margin-left: 0;
