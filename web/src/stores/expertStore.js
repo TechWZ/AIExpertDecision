@@ -6,6 +6,7 @@ export const useExpertStore = defineStore('expert', () => {
   // 状态数据
   const recommendedExperts = ref([])
   const expertPrompts = ref({}) // 存储专家提示词，键为专家ID，值为提示词内容
+  const userContent = ref('') // 存储用户输入的决策需求内容
   const isLoading = ref(false)
   const error = ref(null)
 
@@ -106,13 +107,20 @@ export const useExpertStore = defineStore('expert', () => {
       throw err
     }  }
 
+  // 设置用户内容
+  const setUserContent = (content) => {
+    userContent.value = content
+  }
+
   return {
     recommendedExperts,
     expertPrompts,
+    userContent,
     isLoading,
     error,
     fetchRecommendedExperts,
     fetchExpertPrompts,
-    clearRecommendedExperts
+    clearRecommendedExperts,
+    setUserContent
   }
 })

@@ -25,6 +25,8 @@ public class DeepSeekService {
                 .content();
     }
 
+
+
     public String getChatCompletion(List<Message> messages) {
         return chatClient.prompt(new Prompt(messages))
                 .call()

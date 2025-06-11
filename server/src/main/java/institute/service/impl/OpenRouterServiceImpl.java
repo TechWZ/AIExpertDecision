@@ -2,9 +2,17 @@ package institute.service.impl;
 
 import java.util.List;
 import java.util.ArrayList;
+import java.util.Map;
+import java.util.HashMap;
 
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.client.RestTemplate;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -16,20 +24,26 @@ import institute.dto.ExpertRolesResponse;
 import institute.dto.ExpertRole;
 import institute.dto.AnalysisDecisionRequest;
 import institute.dto.AnalysisDecisionResponse;
-import institute.dto.WhichModelRequest;
-import institute.dto.WhichModelResponse;
-import institute.service.AIExpertDecisionService;
-import institute.service.DeepSeekService;
 import institute.service.OpenRouterService;
 
 @Service
-public class AIExpertDecisionServiceImpl implements AIExpertDecisionService {
+public class OpenRouterServiceImpl implements OpenRouterService {
     
-    @Autowired
-    private DeepSeekService deepSeekService;
+    // OpenRouter配置
+    @Value("${openrouter.api-key}")
+    private String openrouterApiKey;
     
-    @Autowired
-    private OpenRouterService openRouterService;
+    @Value("${openrouter.base-url}")
+    private String openrouterBaseUrl;
+    
+    @Value("${openrouter.default-model}")
+    private String openrouterDefaultModel;
+    
+    @Value("${openrouter.site-url}")
+    private String openrouterSiteUrl;
+    
+    @Value("${openrouter.site-name}")
+    private String openrouterSiteName;
 
     @Override
     public ExpertRolesResponse getExpertRoles(ExpertRolesRequest request) {
@@ -41,12 +55,11 @@ public class AIExpertDecisionServiceImpl implements AIExpertDecisionService {
         // 构建发送给大模型的提示词
         String prompt = buildExpertRolesPrompt(request.getContent());
         
-        // 调用AI服务获取响应
-        String aiResponseString = deepSeekService.getCompletion(prompt);
-        
-        // 解析AI响应获取专家角色列表
+        // 调用OpenRouter API获取响应
         try {
-            // 清理AI响应，提取JSON内容
+            String aiResponseString = callOpenRouterAPI(prompt, "google/gemini-2.5-pro-preview");
+            
+            // 解析AI响应获取专家角色列表
             String cleanedResponse = cleanAiResponse(aiResponseString);
             
             ObjectMapper objectMapper = new ObjectMapper();
@@ -62,12 +75,12 @@ public class AIExpertDecisionServiceImpl implements AIExpertDecisionService {
                 }
             }
             
-            return new ExpertRolesResponse(true, request.getContent(), expertRoles, "专家角色推荐完成");
+            return new ExpertRolesResponse(true, request.getContent(), expertRoles, "专家角色推荐完成 (基于OpenRouter)");
             
         } catch (Exception e) {
             // 如果解析失败，返回错误响应
             return new ExpertRolesResponse(false, request.getContent(), 
-                new ArrayList<>(), "AI分析过程中出现错误: " + e.getMessage());
+                new ArrayList<>(), "OpenRouter API分析过程中出现错误: " + e.getMessage());
         }
     }
 
@@ -84,15 +97,20 @@ public class AIExpertDecisionServiceImpl implements AIExpertDecisionService {
         // 构建发送给大模型的提示词
         String prompt = buildPrompt(request);
         
-        // 调用AI服务获取响应
-        String aiResponseString = deepSeekService.getCompletion(prompt);
-        
-        // 解析AI响应为对象
-        Object aiResponse = parseAiResponse(aiResponseString);
-        
-        // 构建并返回响应对象
-        return new ExpertPromptsResponse(true, request.getDecisionRequirement(), 
-                                       request.getExpertRoles(), aiResponse);
+        // 调用OpenRouter API获取响应
+        try {
+            String aiResponseString = callOpenRouterAPI(prompt, "google/gemini-2.5-pro-preview");
+            
+            // 解析AI响应为对象
+            Object aiResponse = parseAiResponse(aiResponseString);
+            
+            // 构建并返回响应对象
+            return new ExpertPromptsResponse(true, request.getDecisionRequirement(), 
+                                           request.getExpertRoles(), aiResponse);
+        } catch (Exception e) {
+            return new ExpertPromptsResponse(false, request.getDecisionRequirement(), 
+                                           request.getExpertRoles(), "OpenRouter API调用失败: " + e.getMessage());
+        }
     }
 
     @Override
@@ -108,28 +126,15 @@ public class AIExpertDecisionServiceImpl implements AIExpertDecisionService {
         // 构建发送给大模型的提示词
         String prompt = buildAnalysisDecisionPrompt(request);
         
-        // 调用AI服务获取响应
-        String aiResponseString = deepSeekService.getCompletion(prompt);
-        
-        // 直接返回AI生成的markdown格式报告，保留原始格式
-        return new AnalysisDecisionResponse(true, request.getContent(), new ArrayList<>(), aiResponseString, 100);
-    }
-
-    @Override
-    public WhichModelResponse whichModel(WhichModelRequest request) {
-        // 构建询问模型信息的提示词
-        String prompt = buildWhichModelPrompt(request);
-        
-        // 使用OpenRouter API直接调用，完全独立于Spring AI
+        // 调用OpenRouter API获取响应
         try {
-            String aiResponseString = openRouterService.callOpenRouterAPI(prompt, request.getModel());
-            return new WhichModelResponse(true, aiResponseString);
+            String aiResponseString = callOpenRouterAPI(prompt, "google/gemini-2.5-pro-preview");
+            
+            // 直接返回AI生成的markdown格式报告，保留原始格式
+            return new AnalysisDecisionResponse(true, request.getContent(), new ArrayList<>(), aiResponseString, 100);
         } catch (Exception e) {
-            System.err.println("OpenRouter API调用失败: " + e.getMessage());
-            // 返回错误信息，不回退到Spring AI
-            String errorMessage = "OpenRouter API调用失败: " + e.getMessage() + 
-                                 "\n请检查API密钥配置和网络连接。";
-            return new WhichModelResponse(false, errorMessage);
+            String errorMessage = "OpenRouter API分析决策失败: " + e.getMessage();
+            return new AnalysisDecisionResponse(false, request.getContent(), new ArrayList<>(), errorMessage, 0);
         }
     }
     
@@ -270,19 +275,76 @@ public class AIExpertDecisionServiceImpl implements AIExpertDecisionService {
         }
     }
     
-    /**
-     * 构建询问模型信息的提示词
-     */
-    private String buildWhichModelPrompt(WhichModelRequest request) {
-        StringBuilder promptBuilder = new StringBuilder();
-        promptBuilder.append("请简洁地告诉我你的具体模型型号和名称，不需要其他详细介绍。\n");
-        
-        if (request.getAdditionalQuery() != null && !request.getAdditionalQuery().trim().isEmpty()) {
-            promptBuilder.append("另外，用户还希望了解：").append(request.getAdditionalQuery()).append("\n\n");
+    @Override
+    public String callOpenRouterAPI(String prompt, String model) {
+        try {
+            RestTemplate restTemplate = new RestTemplate();
+            
+            // 设置请求头
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            headers.set("Authorization", "Bearer " + openrouterApiKey);
+            headers.set("HTTP-Referer", openrouterSiteUrl); // 使用配置的网站URL
+            headers.set("X-Title", openrouterSiteName); // 使用配置的网站标题
+            
+            // 构建请求体
+            Map<String, Object> requestBody = new HashMap<>();
+            requestBody.put("model", model != null && !model.trim().isEmpty() ? model : openrouterDefaultModel);
+            
+            // 构建消息
+            List<Map<String, Object>> messages = new ArrayList<>();
+            Map<String, Object> userMessage = new HashMap<>();
+            userMessage.put("role", "user");
+            userMessage.put("content", prompt);
+            messages.add(userMessage);
+            
+            requestBody.put("messages", messages);
+            
+            // 创建HTTP实体
+            HttpEntity<Map<String, Object>> entity = new HttpEntity<>(requestBody, headers);
+            
+            // 发送请求
+            ResponseEntity<String> response = restTemplate.exchange(
+                openrouterBaseUrl,
+                HttpMethod.POST,
+                entity,
+                String.class
+            );
+            
+            // 解析响应
+            return parseOpenRouterResponse(response.getBody());
+            
+        } catch (Exception e) {
+            System.err.println("调用OpenRouter API出错: " + e.getMessage());
+            e.printStackTrace();
+            throw new RuntimeException("OpenRouter API调用失败: " + e.getMessage(), e);
         }
-        
-        promptBuilder.append("请用简洁明了的方式回答。");
-        
-        return promptBuilder.toString();
+    }
+    
+    /**
+     * 解析OpenRouter API的响应
+     */
+    private String parseOpenRouterResponse(String responseBody) {
+        try {
+            ObjectMapper mapper = new ObjectMapper();
+            JsonNode rootNode = mapper.readTree(responseBody);
+            
+            JsonNode choicesNode = rootNode.get("choices");
+            if (choicesNode != null && choicesNode.isArray() && choicesNode.size() > 0) {
+                JsonNode firstChoice = choicesNode.get(0);
+                JsonNode messageNode = firstChoice.get("message");
+                if (messageNode != null) {
+                    JsonNode contentNode = messageNode.get("content");
+                    if (contentNode != null) {
+                        return contentNode.asText();
+                    }
+                }
+            }
+            
+            return "无法解析响应内容";
+        } catch (Exception e) {
+            System.err.println("解析OpenRouter响应出错: " + e.getMessage());
+            return "响应解析错误：" + e.getMessage();
+        }
     }
 }

@@ -19,6 +19,9 @@ const recommendedExperts = computed(() => expertStore.recommendedExperts)
 // 获取专家提示词数据
 const expertPrompts = computed(() => expertStore.expertPrompts)
 
+// 获取用户输入的内容
+const userContent = computed(() => expertStore.userContent)
+
 // 按钮是否可点击的状态
 const promptButtonsEnabled = ref(false)
 
@@ -137,7 +140,7 @@ const confirmSubmit = async () => {
   try {
     // 构建请求数据
     const requestData = {
-      content: "原始研究内容",
+      content: userContent.value,
       selected_roles: []
     }
     
@@ -170,6 +173,10 @@ const confirmSubmit = async () => {
     // 立即打开新标签页
     const reportWindow = window.open(router.resolve('/report').href, '_blank')
     
+    // 设置API调用状态标识
+    sessionStorage.setItem('apiCallInProgress', 'true')
+    sessionStorage.removeItem('reportResults') // 清除之前的数据
+    
     ElMessage.info('正在生成分析报告...')
     
     // 调用API
@@ -182,6 +189,8 @@ const confirmSubmit = async () => {
     })
     
     if (!response.ok) {
+      // API调用失败，清除进行中状态
+      sessionStorage.removeItem('apiCallInProgress')
       throw new Error(`HTTP error! status: ${response.status}`)
     }
     
@@ -204,6 +213,9 @@ const confirmSubmit = async () => {
     console.log('存储到sessionStorage的数据大小:', resultsJson.length, '字符')
     sessionStorage.setItem('reportResults', resultsJson)
     
+    // API调用完成，清除进行中状态
+    sessionStorage.removeItem('apiCallInProgress')
+    
     // 验证存储是否成功
     const storedData = sessionStorage.getItem('reportResults')
     console.log('从sessionStorage读取的数据大小:', storedData ? storedData.length : 0, '字符')
@@ -218,6 +230,8 @@ const confirmSubmit = async () => {
     
   } catch (error) {
     console.error('生成报告失败:', error)
+    // API调用失败，清除进行中状态
+    sessionStorage.removeItem('apiCallInProgress')
     ElMessage.error('生成报告失败，请稍后重试')
   }
 }

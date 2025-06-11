@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted, computed } from 'vue'
 import MarkdownRender from 'vue-markdown-render'
 
 const reportResults = ref({})
@@ -7,8 +7,22 @@ const hasData = ref(false)
 const loading = ref(true)
 let checkDataInterval = null
 
+// 计算是否API还在进行中
+const apiInProgress = computed(() => {
+  return sessionStorage.getItem('apiCallInProgress') === 'true'
+})
+
 const checkReportData = () => {
+  const apiInProgress = sessionStorage.getItem('apiCallInProgress')
   const storedResults = sessionStorage.getItem('reportResults')
+  
+  // 如果API还在进行中，继续等待
+  if (apiInProgress === 'true') {
+    loading.value = true
+    return
+  }
+  
+  // API已完成，检查是否有数据
   if (storedResults) {
     try {
       const parsedResults = JSON.parse(storedResults)
@@ -30,17 +44,30 @@ const checkReportData = () => {
           console.log('===============================')
         })
         
-        if (hasData.value) {
-          loading.value = false
-          // 停止定时检查
-          if (checkDataInterval) {
-            clearInterval(checkDataInterval)
-            checkDataInterval = null
-          }
+        loading.value = false
+        // 停止定时检查
+        if (checkDataInterval) {
+          clearInterval(checkDataInterval)
+          checkDataInterval = null
         }
       }
     } catch (error) {
       console.error('解析报告数据失败:', error)
+      loading.value = false
+      // 停止定时检查
+      if (checkDataInterval) {
+        clearInterval(checkDataInterval)
+        checkDataInterval = null
+      }
+    }
+  } else {
+    // API已完成但没有数据
+    hasData.value = false
+    loading.value = false
+    // 停止定时检查
+    if (checkDataInterval) {
+      clearInterval(checkDataInterval)
+      checkDataInterval = null
     }
   }
 }
@@ -48,20 +75,8 @@ const checkReportData = () => {
 onMounted(() => {
   checkReportData()
   
-  // 如果没有数据，每隔1秒检查一次
-  if (!hasData.value) {
-    checkDataInterval = setInterval(checkReportData, 1000)
-    // 5秒后停止检查
-    setTimeout(() => {
-      if (checkDataInterval) {
-        clearInterval(checkDataInterval)
-        checkDataInterval = null
-        loading.value = false
-      }
-    }, 5000)
-  } else {
-    loading.value = false
-  }
+  // 每隔1秒检查一次数据状态
+  checkDataInterval = setInterval(checkReportData, 1000)
 })
 
 onUnmounted(() => {
@@ -78,7 +93,7 @@ onUnmounted(() => {
         <h1>专家分析报告</h1>
         <el-divider />
         
-        <div v-if="loading" class="loading" v-loading="true" element-loading-text="加载中...">
+        <div v-if="loading || apiInProgress" class="loading" v-loading="true" element-loading-text="正在生成专家分析报告，请耐心等待...">
           <div style="height: 200px;"></div>
         </div>
         

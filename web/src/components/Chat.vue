@@ -26,6 +26,9 @@ const sendMessage = async () => {
   
   const userDecisionRequirement = newMessage.value.trim();
   
+  // 保存用户输入的内容到store
+  expertStore.setUserContent(userDecisionRequirement);
+  
   try {
     ElMessage.info('正在为您推荐专家角色...');
     
