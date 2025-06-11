@@ -18,10 +18,12 @@ export default defineConfig({
   server: {
     port: 5173,
     proxy: {
-      '/AIExpertDecisionServer': {
+      // 统一通过server代理所有API请求
+      '/server': {
         target: 'http://localhost:5002',
         changeOrigin: true,
         secure: false,
+        rewrite: (path) => path.replace(/^\/server/, '/AIExpertDecisionServer')
       }
     }
   }

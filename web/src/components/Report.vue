@@ -19,6 +19,7 @@ const checkReportData = () => {
   // 如果API还在进行中，继续等待
   if (apiInProgress === 'true') {
     loading.value = true
+    hasData.value = false
     return
   }
   
@@ -26,48 +27,45 @@ const checkReportData = () => {
   if (storedResults) {
     try {
       const parsedResults = JSON.parse(storedResults)
-      if (parsedResults && typeof parsedResults === 'object') {
+      if (parsedResults && typeof parsedResults === 'object' && parsedResults.finalConclusion) {
         reportResults.value = parsedResults
-        hasData.value = Object.keys(parsedResults).length > 0
+        hasData.value = true
+        loading.value = false
         
         // 在控制台打印报告内容
         console.log('报告页面加载的数据:', parsedResults)
         console.log('sessionStorage原始数据大小:', storedResults.length, '字符')
         
-        // 详细输出每个专家的完整报告内容
-        Object.entries(parsedResults).forEach(([expertName, content]) => {
-          console.log(`=== ${expertName} ===`)
-          console.log(`内容长度: ${content ? content.length : 0} 字符`)
-          console.log(`内容开头100字符:`, content ? content.slice(0, 100) : 'null')
-          console.log(`内容结尾100字符:`, content ? content.slice(-100) : 'null')
-          console.log(`完整内容:`, content)
-          console.log('===============================')
-        })
-        
-        loading.value = false
         // 停止定时检查
         if (checkDataInterval) {
           clearInterval(checkDataInterval)
           checkDataInterval = null
         }
+      } else {
+        // 数据格式不正确，继续等待
+        loading.value = true
+        hasData.value = false
       }
     } catch (error) {
       console.error('解析报告数据失败:', error)
+      // 数据解析失败，继续等待而不是立即停止
+      loading.value = true
+      hasData.value = false
+    }
+  } else {
+    // 如果API状态已清除但没有数据，说明可能出错了
+    if (apiInProgress !== 'true') {
+      hasData.value = false
       loading.value = false
       // 停止定时检查
       if (checkDataInterval) {
         clearInterval(checkDataInterval)
         checkDataInterval = null
       }
-    }
-  } else {
-    // API已完成但没有数据
-    hasData.value = false
-    loading.value = false
-    // 停止定时检查
-    if (checkDataInterval) {
-      clearInterval(checkDataInterval)
-      checkDataInterval = null
+    } else {
+      // 继续等待
+      loading.value = true
+      hasData.value = false
     }
   }
 }
@@ -90,8 +88,8 @@ onUnmounted(() => {
   <div class="report-container">
     <el-row>
       <el-col :span="24">
-        <h1>专家分析报告</h1>
-        <el-divider />
+        <!-- <h1>专家分析报告</h1>
+        <el-divider /> -->
         
         <div v-if="loading || apiInProgress" class="loading" v-loading="true" element-loading-text="正在生成专家分析报告，请耐心等待...">
           <div style="height: 200px;"></div>
@@ -102,13 +100,14 @@ onUnmounted(() => {
         </div>
         
         <div v-else>
-          <div v-for="(content, expertName) in reportResults" :key="expertName" class="expert-report">
+          <!-- 显示finalConclusion内容 -->
+          <div class="final-conclusion">
             <el-card class="report-card">
               <template #header>
-                <h2>{{ expertName }}</h2>
+                <h2>专家分析决策报告</h2>
               </template>
               <div class="markdown-content">
-                <MarkdownRender :source="content" />
+                <MarkdownRender :source="reportResults.finalConclusion" />
               </div>
             </el-card>
           </div>

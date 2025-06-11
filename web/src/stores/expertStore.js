@@ -7,16 +7,17 @@ export const useExpertStore = defineStore('expert', () => {
   const recommendedExperts = ref([])
   const expertPrompts = ref({}) // 存储专家提示词，键为专家ID，值为提示词内容
   const userContent = ref('') // 存储用户输入的决策需求内容
+  const selectedModel = ref('deepSeekR1') // 存储用户选择的模型
   const isLoading = ref(false)
   const error = ref(null)
 
   // 获取推荐专家数据
-  const fetchRecommendedExperts = async (content) => {
+  const fetchRecommendedExperts = async (content, apiPath = '/server/submit_content') => {
     isLoading.value = true
     error.value = null
     
     try {
-      const response = await fetch('http://39.103.63.72:5001/api/submit_content', {
+      const response = await fetch(apiPath, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -39,19 +40,23 @@ export const useExpertStore = defineStore('expert', () => {
       const result = await response.json()
       console.log('API返回结果:', result)
       
-      // 直接使用固定的API数据格式
-      const roles = result.roles || []
+      // 适配新的API数据格式：{expertRoles: [{roleName: "", matchScore: 0}]}
+      const expertRoles = result.expertRoles || []
       
-      recommendedExperts.value = roles.map((role, index) => ({
-        id: Date.now() + index,
-        date: role.role_name || `专家${index + 1}`, // 专家名称
-        name: role.score || 0, // 匹配度 - 直接使用后端返回的数值
+      // 使用固定的ID生成策略，确保ID稳定
+      const baseTimestamp = Date.now()
+      recommendedExperts.value = expertRoles.map((role, index) => ({
+        id: `expert_${baseTimestamp}_${index}`, // 使用字符串ID，更稳定
+        date: role.roleName || `专家${index + 1}`, // 专家名称
+        name: role.matchScore || 0, // 匹配度 - 直接使用后端返回的数值
         state: 'GPT-4', // 默认大模型
         selected: false,
         city: 'Los Angeles',
         address: 'No. 189, Grove St, Los Angeles',
         zip: 'CA 90036',
       }))
+      
+      console.log('生成的专家数据:', recommendedExperts.value)
       
       return result
     } catch (err) {
@@ -69,9 +74,22 @@ export const useExpertStore = defineStore('expert', () => {
   }
 
   // 获取专家提示词
-  const fetchExpertPrompts = async (expertRoles, decisionRequirement) => {
+  const fetchExpertPrompts = async (expertRoles, decisionRequirement, selectedModel = 'deepSeekR1') => {
     try {
-      const response = await fetch('/AIExpertDecisionServer/generateExpertsPrompts', {
+      // 根据选择的模型确定API路径
+      let apiPath = '/server/generateExpertsPrompts';
+      if (selectedModel === 'gemini2.5ProPreview') {
+        apiPath = '/server/generateExpertsPrompts2Model';
+      }
+      
+      console.log('获取专家提示词 - 请求参数:', {
+        expertRoles,
+        decisionRequirement,
+        selectedModel,
+        apiPath
+      })
+      
+      const response = await fetch(apiPath, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -91,36 +109,54 @@ export const useExpertStore = defineStore('expert', () => {
       
       // 存储专家提示词数据到状态中
       if (result.aiResponse && result.aiResponse.expertPrompts) {
+        console.log('当前专家列表:', recommendedExperts.value)
+        console.log('API返回的专家提示词:', result.aiResponse.expertPrompts)
+        
         // API返回格式为 { aiResponse: { expertPrompts: { "专家名称": "提示词内容", ... } } }
         Object.keys(result.aiResponse.expertPrompts).forEach(expertName => {
           // 找到对应的专家ID
           const expert = recommendedExperts.value.find(e => e.date === expertName)
+          console.log(`查找专家 "${expertName}":`, expert)
+          
           if (expert) {
             expertPrompts.value[expert.id] = result.aiResponse.expertPrompts[expertName]
+            console.log(`成功存储专家 ${expertName} (ID: ${expert.id}) 的提示词`)
+          } else {
+            console.warn(`未找到专家 "${expertName}"，当前专家列表:`, recommendedExperts.value.map(e => e.date))
           }
         })
+        
+        console.log('最终存储的专家提示词:', expertPrompts.value)
       }
       
       return result
     } catch (err) {
       console.error('获取专家提示词失败:', err)
       throw err
-    }  }
+    }
+  }
 
   // 设置用户内容
   const setUserContent = (content) => {
     userContent.value = content
   }
 
+  // 设置选择的模型
+  const setSelectedModel = (model) => {
+    selectedModel.value = model
+  }
+
   return {
     recommendedExperts,
     expertPrompts,
     userContent,
+    selectedModel,
     isLoading,
     error,
     fetchRecommendedExperts,
     fetchExpertPrompts,
     clearRecommendedExperts,
-    setUserContent
+    setUserContent,
+    setSelectedModel
   }
 })

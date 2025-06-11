@@ -83,9 +83,8 @@ export const useChatStore = defineStore('chat', () => {
         // Show a loading state immediately
         sessionToUpdate.messages = [{ id: Date.now(), text: '正在从服务器加载数据...', sender: 'system', avatar: '' }];
         try {
-          // Assuming proxy is set up in vite.config.js or CORS is handled by backend
-          // If using vite proxy, the path should be relative to the proxy setup
-          const response = await fetch('/AIExpertDecisionServer/getChat'); // Updated to use /AIExpertDecisionServer
+          // 通过Vite代理调用API
+          const response = await fetch('/server/getChat');
           if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
           }

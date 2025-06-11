@@ -48,7 +48,7 @@ spring:
 
 # OpenRouter配置
 openrouter:
-  api-key: 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
+  # API 密钥在 application-local.yml 中配置
   base-url: https://openrouter.ai/api/v1/chat/completions
   default-model: google/gemini-2.5-pro-preview
   site-url: http://localhost:5002

@@ -22,10 +22,13 @@ const expertPrompts = computed(() => expertStore.expertPrompts)
 // 获取用户输入的内容
 const userContent = computed(() => expertStore.userContent)
 
-// 按钮是否可点击的状态
-const promptButtonsEnabled = ref(false)
+// 获取用户选择的模型
+const selectedModel = computed(() => expertStore.selectedModel)
 
-
+// 按钮是否可点击的状态 - 基于expertPrompts的计算属性
+const promptButtonsEnabled = computed(() => {
+  return Object.keys(expertPrompts.value).length > 0
+})
 
 // 只显示API返回的推荐专家数据，不提供默认数据
 const tableData = computed(() => {
@@ -107,30 +110,42 @@ const confirmAddExpert = () => {
 onMounted(() => {
   // 组件挂载时检查是否有推荐专家数据
   console.log('推荐专家数据:', recommendedExperts.value)
+  console.log('专家提示词数据:', expertPrompts.value)
+  console.log('按钮启用状态:', promptButtonsEnabled.value)
   
-  // 监听专家提示词更新事件
-  window.addEventListener('expert-prompts-updated', handlePromptsUpdated)
+  // 添加响应式监听，当专家提示词数据变化时输出调试信息
+  setTimeout(() => {
+    console.log('延迟检查 - 推荐专家数据:', recommendedExperts.value)
+    console.log('延迟检查 - 专家提示词数据:', expertPrompts.value)
+    console.log('延迟检查 - 按钮启用状态:', promptButtonsEnabled.value)
+    
+    // 检查每个专家的按钮状态
+    recommendedExperts.value.forEach(expert => {
+      const hasPrompt = !!expertPrompts.value[expert.id]
+      console.log(`专家 "${expert.date}" (ID: ${expert.id}) - 有提示词: ${hasPrompt}`)
+    })
+  }, 2000)
 })
 
 onUnmounted(() => {
-  // 清理事件监听器
-  window.removeEventListener('expert-prompts-updated', handlePromptsUpdated)
+  // 清理工作（如果需要）
 })
-
-// 处理提示词更新事件
-const handlePromptsUpdated = () => {
-  console.log('收到 expert-prompts-updated 事件，启用按钮')
-  promptButtonsEnabled.value = true
-  console.log('promptButtonsEnabled 设置为:', promptButtonsEnabled.value)
-  console.log('当前 expertPrompts:', expertPrompts.value)
-}
 
 // 写入系统提示词
 const writeSystemPrompt = (expertId) => {
+  console.log('写入系统提示词 - 专家ID:', expertId)
+  console.log('当前专家提示词数据:', expertPrompts.value)
+  
   const prompt = expertPrompts.value[expertId]
+  console.log('找到的提示词:', prompt)
+  
   if (prompt) {
     expertInputs.value[expertId] = prompt
+    ElMessage.success('提示词已写入')
+    console.log('提示词写入成功')
   } else {
+    console.log('未找到该专家的提示词')
+    console.log('可用的专家ID:', Object.keys(expertPrompts.value))
     ElMessage.warning('该专家暂无可用的系统提示词')
   }
 }
@@ -141,52 +156,59 @@ const confirmSubmit = async () => {
     // 构建请求数据
     const requestData = {
       content: userContent.value,
-      selected_roles: []
+      expertPrompts: {}
     }
     
     // 添加选中的专家数据
     selectedExperts.value.forEach(expert => {
       const prompt = expertInputs.value[expert.id] || ''
       if (prompt.trim()) {
-        requestData.selected_roles.push({
-          role_name: expert.date,
-          prompt: prompt,
-          model_id: "deepseek-ai/DeepSeek-V3"
-        })
+        requestData.expertPrompts[expert.date] = prompt
       }
     })
     
     // 添加自定义专家数据
     customExperts.value.forEach(expert => {
-      requestData.selected_roles.push({
-        role_name: expert.role_name,
-        prompt: '',
-        model_id: "deepseek-ai/DeepSeek-V3"
-      })
+      if (expert.role_name.trim()) {
+        // 自定义专家没有提示词，使用空字符串
+        requestData.expertPrompts[expert.role_name] = ''
+      }
     })
     
-    if (requestData.selected_roles.length === 0) {
+    if (Object.keys(requestData.expertPrompts).length === 0) {
       ElMessage.warning('请先选择专家并填写提示词')
       return
     }
-    
-    // 立即打开新标签页
-    const reportWindow = window.open(router.resolve('/report').href, '_blank')
     
     // 设置API调用状态标识
     sessionStorage.setItem('apiCallInProgress', 'true')
     sessionStorage.removeItem('reportResults') // 清除之前的数据
     
-    ElMessage.info('正在生成分析报告...')
+    // 显示持续的loading消息
+    const loadingMessage = ElMessage({
+      message: '正在生成分析报告，请耐心等待...',
+      type: 'info',
+      duration: 0, // 不自动关闭
+      showClose: false
+    })
+    
+    // 根据选择的模型确定API路径
+    let apiPath = '/server/executeAnalysisDecision';
+    if (selectedModel.value === 'gemini2.5ProPreview') {
+      apiPath = '/server/executeAnalysisDecision2Model';
+    }
     
     // 调用API
-    const response = await fetch('http://39.103.63.72:5001/api/run_simulation', {
+    const response = await fetch(apiPath, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(requestData)
     })
+    
+    // 关闭loading消息
+    loadingMessage.close()
     
     if (!response.ok) {
       // API调用失败，清除进行中状态
@@ -198,18 +220,16 @@ const confirmSubmit = async () => {
     
     // 详细调试API返回的数据
     console.log('API完整返回数据:', result)
-    console.log('API返回的results字段:', result.results)
     
-    // 检查每个专家报告的长度
-    if (result.results && typeof result.results === 'object') {
-      Object.entries(result.results).forEach(([expertName, content]) => {
-        console.log(`${expertName} 报告长度:`, content ? content.length : 0)
-        console.log(`${expertName} 报告末尾100字符:`, content ? content.slice(-100) : 'null')
-      })
+    // 检查API响应格式
+    if (!result.finalConclusion) {
+      // API调用失败，清除进行中状态
+      sessionStorage.removeItem('apiCallInProgress')
+      throw new Error('API响应格式不正确，缺少finalConclusion字段');
     }
     
     // 将结果存储到sessionStorage中，供Report页面使用
-    const resultsJson = JSON.stringify(result.results)
+    const resultsJson = JSON.stringify(result)
     console.log('存储到sessionStorage的数据大小:', resultsJson.length, '字符')
     sessionStorage.setItem('reportResults', resultsJson)
     
@@ -222,6 +242,9 @@ const confirmSubmit = async () => {
     console.log('存储前后数据大小对比:', resultsJson.length === (storedData ? storedData.length : 0) ? '一致' : '不一致')
     
     ElMessage.success('分析报告生成成功')
+    
+    // API调用完成后再打开新标签页
+    const reportWindow = window.open(router.resolve('/report').href, '_blank')
     
     // 刷新报告页面以显示新数据
     if (reportWindow && !reportWindow.closed) {

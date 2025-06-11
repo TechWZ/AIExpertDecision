@@ -10,11 +10,23 @@ const router = useRouter();
 const expertStore = useExpertStore();
 const stepsStore = useStepsStore();
 const newMessage = ref('');
+const selectedModel = ref('deepSeekR1');
 
 const exampleQuestions = ref([
   '我需要评估一个医疗项目的风险与收益',
   '帮我分析这份临床试验数据的关键发现和建议',
   '我需要针对这个复杂医疗案例的专家决策支持'
+]);
+
+const modelOptions = ref([
+  {
+    value: 'deepSeekR1',
+    label: 'DeepSeek R1',
+  },
+  {
+    value: 'gemini2.5ProPreview',
+    label: 'Gemini 2.5 Pro Preview',
+  },
 ]);
 
 const handleExampleClick = (example) => {
@@ -28,12 +40,25 @@ const sendMessage = async () => {
   
   // 保存用户输入的内容到store
   expertStore.setUserContent(userDecisionRequirement);
+  // 保存用户选择的模型到store
+  expertStore.setSelectedModel(selectedModel.value);
   
   try {
-    ElMessage.info('正在为您推荐专家角色...');
+    const loadingMessage = ElMessage.info({
+      message: '正在为您推荐专家角色...',
+      duration: 0 // 设置为0表示不自动关闭
+    });
     
-    const result = await expertStore.fetchRecommendedExperts(userDecisionRequirement);
+    // 根据选择的模型调用不同的API
+    let result;
+    if (selectedModel.value === 'deepSeekR1') {
+      result = await expertStore.fetchRecommendedExperts(userDecisionRequirement, '/server/getExpertRoles');
+    } else if (selectedModel.value === 'gemini2.5ProPreview') {
+      result = await expertStore.fetchRecommendedExperts(userDecisionRequirement, '/server/getExpertRoles2Model');
+    }
     
+    // 关闭loading消息
+    loadingMessage.close();
     ElMessage.success('专家角色推荐成功');
     console.log('推荐结果:', result);
     
@@ -44,17 +69,14 @@ const sendMessage = async () => {
     router.push('/expertlist');
     
     // 在后台异步获取专家提示词，不阻塞页面跳转
-    const expertRoles = result.roles?.map(role => role.role_name) || [];
+    const expertRoles = result.expertRoles?.map(role => role.roleName) || [];
     if (expertRoles.length > 0) {
       // 异步获取专家提示词，不使用 await
-      expertStore.fetchExpertPrompts(expertRoles, userDecisionRequirement)
+      expertStore.fetchExpertPrompts(expertRoles, userDecisionRequirement, selectedModel.value)
         .then(promptsResult => {
           // 成功获取提示词后
           console.log('专家提示词获取成功:', promptsResult);
           ElMessage.success('专家提示词生成成功');
-          
-          // 触发事件通知ExpertList组件更新按钮状态
-          window.dispatchEvent(new CustomEvent('expert-prompts-updated'));
         })
         .catch(promptError => {
           console.error('获取专家提示词失败:', promptError);
@@ -139,6 +161,19 @@ const goToExpertList = () => {
             >
               自定义专家
             </el-button>
+            <el-select
+              v-model="selectedModel"
+              placeholder="选择模型"
+              size="large"
+              style="width: 100%"
+            >
+              <el-option
+                v-for="item in modelOptions"
+                :key="item.value"
+                :label="item.label"
+                :value="item.value"
+              />
+            </el-select>
           </div>
         </div>
       </el-col>
