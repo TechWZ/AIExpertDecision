@@ -5,6 +5,7 @@ import dayjs from 'dayjs'
 import { ArrowDown, Check } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { useExpertStore } from '@/stores/expertStore'
+import { API_PATHS } from '@/config/api'
 
 const now = new Date()
 const expertStore = useExpertStore()
@@ -193,10 +194,9 @@ const confirmSubmit = async () => {
     })
     
     // 根据选择的模型确定API路径
-    let apiPath = '/server/executeAnalysisDecision';
-    if (selectedModel.value === 'gemini2.5ProPreview') {
-      apiPath = '/server/executeAnalysisDecision2Model';
-    }
+    let apiPath = selectedModel.value === 'gemini2.5ProPreview' 
+      ? API_PATHS.executeAnalysisDecision2Model
+      : API_PATHS.executeAnalysisDecision
     
     // 调用API
     const response = await fetch(apiPath, {

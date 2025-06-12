@@ -5,6 +5,7 @@ import { Promotion, QuestionFilled } from '@element-plus/icons-vue';
 import { ElMessage } from 'element-plus';
 import { useExpertStore } from '@/stores/expertStore';
 import { useStepsStore } from '@/stores/stepsStore';
+import { API_PATHS } from '@/config/api';
 
 const router = useRouter();
 const expertStore = useExpertStore();
@@ -52,9 +53,9 @@ const sendMessage = async () => {
     // 根据选择的模型调用不同的API
     let result;
     if (selectedModel.value === 'deepSeekR1') {
-      result = await expertStore.fetchRecommendedExperts(userDecisionRequirement, '/server/getExpertRoles');
+      result = await expertStore.fetchRecommendedExperts(userDecisionRequirement, API_PATHS.getExpertRoles);
     } else if (selectedModel.value === 'gemini2.5ProPreview') {
-      result = await expertStore.fetchRecommendedExperts(userDecisionRequirement, '/server/getExpertRoles2Model');
+      result = await expertStore.fetchRecommendedExperts(userDecisionRequirement, API_PATHS.getExpertRoles2Model);
     }
     
     // 关闭loading消息

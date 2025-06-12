@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { ElMessage } from 'element-plus'
+import { API_PATHS } from '@/config/api'
 
 export const useExpertStore = defineStore('expert', () => {
   // 状态数据
@@ -77,10 +78,9 @@ export const useExpertStore = defineStore('expert', () => {
   const fetchExpertPrompts = async (expertRoles, decisionRequirement, selectedModel = 'deepSeekR1') => {
     try {
       // 根据选择的模型确定API路径
-      let apiPath = '/server/generateExpertsPrompts';
-      if (selectedModel === 'gemini2.5ProPreview') {
-        apiPath = '/server/generateExpertsPrompts2Model';
-      }
+      let apiPath = selectedModel === 'gemini2.5ProPreview' 
+        ? API_PATHS.generateExpertsPrompts2Model
+        : API_PATHS.generateExpertsPrompts
       
       console.log('获取专家提示词 - 请求参数:', {
         expertRoles,
@@ -114,15 +114,24 @@ export const useExpertStore = defineStore('expert', () => {
         
         // API返回格式为 { aiResponse: { expertPrompts: { "专家名称": "提示词内容", ... } } }
         Object.keys(result.aiResponse.expertPrompts).forEach(expertName => {
-          // 找到对应的专家ID
-          const expert = recommendedExperts.value.find(e => e.date === expertName)
+          // 找到对应的专家ID - 使用date字段（存储的是专家中文名称）进行匹配
+          const expert = recommendedExperts.value.find(e => {
+            // 先尝试精确匹配
+            if (e.date === expertName) {
+              return true
+            }
+            // 如果不匹配，尝试提取中文部分进行匹配（处理中英文混合格式）
+            const chineseName = e.date.split(' (')[0] // 提取括号前的中文部分
+            return chineseName === expertName
+          })
+          
           console.log(`查找专家 "${expertName}":`, expert)
           
           if (expert) {
             expertPrompts.value[expert.id] = result.aiResponse.expertPrompts[expertName]
             console.log(`成功存储专家 ${expertName} (ID: ${expert.id}) 的提示词`)
           } else {
-            console.warn(`未找到专家 "${expertName}"，当前专家列表:`, recommendedExperts.value.map(e => e.date))
+            console.warn(`未找到专家 "${expertName}"，当前专家列表:`, recommendedExperts.value.map(e => ({ name: e.date, id: e.id })))
           }
         })
         

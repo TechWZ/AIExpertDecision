@@ -1,0 +1,61 @@
+spring:
+  ai:
+    openai:
+      # DeepSeek API key - 生产环境配置
+      api-key: YOUR_DEEPSEEK_API_KEY_HERE
+
+# OpenRouter配置（生产环境）
+openrouter:
+  # OpenRouter API 密钥
+  api-key: YOUR_OPENROUTER_API_KEY_HERE
+
+# 生产环境日志配置
+logging:
+  level:
+    root: INFO
+    institute: INFO
+    org.springframework: WARN
+    com.zaxxer.hikari: WARN
+  file:
+    name: /var/log/aiexpert/application.log
+  pattern:
+    file: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
+  logback:
+    rollingpolicy:
+      max-file-size: 100MB
+      max-history: 30
+      total-size-cap: 1GB
+
+# 数据库连接池优化（生产环境）
+spring:
+  datasource:
+    druid:
+      # 生产环境连接池配置
+      initial-size: 10
+      max-active: 50
+      min-idle: 10
+      max-wait: 5000
+      # 连接泄露检测
+      remove-abandoned: true
+      remove-abandoned-timeout: 300
+      log-abandoned: true
+      # 性能监控配置
+      stat-view-servlet:
+        enabled: false  # 生产环境关闭监控页面
+      web-stat-filter:
+        enabled: false  # 生产环境关闭web监控
+
+# JVM 和应用监控
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: when-authorized
+  metrics:
+    export:
+      prometheus:
+        enabled: true

@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
+import { API_PATHS } from '@/config/api';
 
 export const useChatStore = defineStore('chat', () => {
   // State
@@ -83,8 +84,8 @@ export const useChatStore = defineStore('chat', () => {
         // Show a loading state immediately
         sessionToUpdate.messages = [{ id: Date.now(), text: '正在从服务器加载数据...', sender: 'system', avatar: '' }];
         try {
-          // 通过Vite代理调用API
-          const response = await fetch('/server/getChat');
+          // 根据环境调用统一的API地址
+          const response = await fetch(API_PATHS.getChat);
           if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
           }
