@@ -20,7 +20,7 @@ export default defineConfig({
     proxy: {
       // 统一通过server代理所有API请求
       '/server': {
-        target: 'http://39.103.63.72:5002',
+        target: 'http://127.0.0.1:5002',
         changeOrigin: true,
         secure: false,
         rewrite: (path) => path.replace(/^\/server/, '/AIExpertDecisionServer')

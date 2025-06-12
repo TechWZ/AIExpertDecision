@@ -43,12 +43,18 @@ const formLabelWidth = '140px'
 // 存储每个选中专家的输入内容
 const expertInputs = ref({})
 
+// 存储每个自定义专家的按钮状态
+const customExpertButtonStates = ref({})
+
 const form = ref({
   role_name: '',
-  model: 'GPT-4'
+  model: 'GPT-4',
+  prompt: ''
 })
 
 const deleteRow = (index) => {
+  // 清理对应的按钮状态
+  delete customExpertButtonStates.value[index]
   customExperts.value.splice(index, 1)
 }
 
@@ -98,10 +104,12 @@ const confirmAddExpert = () => {
     customExperts.value.push({
       role_name: form.value.role_name,
       model: form.value.model,
+      prompt: form.value.prompt,
     })
     // 重置表单
     form.value.role_name = ''
     form.value.model = 'GPT-4'
+    form.value.prompt = ''
   }
   dialogFormVisible.value = false
 }
@@ -109,23 +117,16 @@ const confirmAddExpert = () => {
 
 
 onMounted(() => {
-  // 组件挂载时检查是否有推荐专家数据
+  // 组件挂载时检查推荐专家数据（此时数据应该已经存在）
   console.log('推荐专家数据:', recommendedExperts.value)
   console.log('专家提示词数据:', expertPrompts.value)
   console.log('按钮启用状态:', promptButtonsEnabled.value)
   
-  // 添加响应式监听，当专家提示词数据变化时输出调试信息
-  setTimeout(() => {
-    console.log('延迟检查 - 推荐专家数据:', recommendedExperts.value)
-    console.log('延迟检查 - 专家提示词数据:', expertPrompts.value)
-    console.log('延迟检查 - 按钮启用状态:', promptButtonsEnabled.value)
-    
-    // 检查每个专家的按钮状态
-    recommendedExperts.value.forEach(expert => {
-      const hasPrompt = !!expertPrompts.value[expert.id]
-      console.log(`专家 "${expert.date}" (ID: ${expert.id}) - 有提示词: ${hasPrompt}`)
-    })
-  }, 2000)
+  // 检查每个专家的按钮状态
+  recommendedExperts.value.forEach(expert => {
+    const hasPrompt = !!expertPrompts.value[expert.id]
+    console.log(`专家 "${expert.date}" (ID: ${expert.id}) - 有提示词: ${hasPrompt}`)
+  })
 })
 
 onUnmounted(() => {
@@ -151,6 +152,52 @@ const writeSystemPrompt = (expertId) => {
   }
 }
 
+// 获取自定义专家系统提示词
+const fetchCustomExpertPrompt = async (index, expertName) => {
+  // 设置按钮为加载状态
+  customExpertButtonStates.value[index] = 'loading'
+  
+  try {
+    // 模拟API调用，实际需要替换为真实的API路径
+    const response = await fetch('/server/getCustomExpertPrompt', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        expertName: expertName,
+        userContent: userContent.value
+      })
+    })
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`)
+    }
+    
+    const result = await response.json()
+    
+    // 假设API返回格式为 {prompt: "提示词内容"}
+    if (result.prompt) {
+      customExperts.value[index].prompt = result.prompt
+      customExpertButtonStates.value[index] = 'write'
+      ElMessage.success('系统提示词获取成功')
+    } else {
+      throw new Error('API响应格式不正确')
+    }
+    
+  } catch (error) {
+    console.error('获取自定义专家提示词失败:', error)
+    customExpertButtonStates.value[index] = 'fetch'
+    ElMessage.error('获取系统提示词失败，请稍后重试')
+  }
+}
+
+// 写入自定义专家系统提示词
+const writeCustomExpertPrompt = (index, expertName) => {
+  // 直接使用已经获取到的提示词（已经在fetchCustomExpertPrompt中写入到expert.prompt）
+  ElMessage.success('提示词已写入')
+}
+
 // 确认提交，跳转到报告页面
 const confirmSubmit = async () => {
   try {
@@ -171,8 +218,8 @@ const confirmSubmit = async () => {
     // 添加自定义专家数据
     customExperts.value.forEach(expert => {
       if (expert.role_name.trim()) {
-        // 自定义专家没有提示词，使用空字符串
-        requestData.expertPrompts[expert.role_name] = ''
+        // 使用自定义专家的提示词，如果没有则使用空字符串
+        requestData.expertPrompts[expert.role_name] = expert.prompt || ''
       }
     })
     
@@ -329,7 +376,33 @@ const confirmSubmit = async () => {
               </el-dropdown>
             </template>
           </el-table-column>
-          <el-table-column fixed="right" label="操作" min-width="120">
+          <el-table-column label="系统提示词" width="140">
+            <template #default="scope">
+              <el-button 
+                v-if="!customExpertButtonStates[scope.$index] || customExpertButtonStates[scope.$index] === 'fetch'"
+                type="primary" 
+                size="small" 
+                @click="fetchCustomExpertPrompt(scope.$index, scope.row.role_name)">
+                获取系统提示词
+              </el-button>
+              <el-button 
+                v-else-if="customExpertButtonStates[scope.$index] === 'loading'"
+                type="primary" 
+                size="small" 
+                :loading="true"
+                disabled>
+                正在获取系统提示词
+              </el-button>
+              <el-button 
+                v-else-if="customExpertButtonStates[scope.$index] === 'write'"
+                type="success" 
+                size="small" 
+                @click="writeCustomExpertPrompt(scope.$index, scope.row.role_name)">
+                写入系统提示词
+              </el-button>
+            </template>
+          </el-table-column>
+          <el-table-column fixed="right" label="操作" min-width="80">
             <template #default="scope">
               <el-button link type="primary" size="small" @click.prevent="deleteRow(scope.$index)">
                 删除
@@ -360,6 +433,19 @@ const confirmSubmit = async () => {
             placeholder="请输入提示词" />
         </el-card>
       </div>
+      
+      <!-- 自定义专家提示词 -->
+      <div v-for="(expert, index) in customExperts" :key="`custom_${index}`" style="margin-bottom: 20px;">
+        <el-card style="max-width: 480px">
+          <template #header>
+            <div class="card-header">
+              <span>{{ expert.role_name }}</span>
+            </div>
+          </template>
+          <el-input v-model="expert.prompt" style="width: 100%" :autosize="{ minRows: 2 }" type="textarea"
+            placeholder="请输入提示词" />
+        </el-card>
+      </div>
     </el-col>
   </el-row>
 
@@ -380,6 +466,9 @@ const confirmSubmit = async () => {
           <el-option label="ChatGLM" value="ChatGLM" />
           <el-option label="文心一言" value="文心一言" />
         </el-select>
+      </el-form-item>
+      <el-form-item label="提示词" :label-width="formLabelWidth">
+        <el-input v-model="form.prompt" type="textarea" :autosize="{ minRows: 3, maxRows: 6 }" placeholder="请输入提示词" />
       </el-form-item>
     </el-form>
     <template #footer>

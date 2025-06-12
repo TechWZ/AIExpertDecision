@@ -9,6 +9,7 @@ import institute.dto.ExpertPromptsRequest;
 import institute.dto.ExpertPromptsResponse;
 import institute.dto.ExpertRolesRequest;
 import institute.dto.ExpertRolesResponse;
+import institute.dto.ExpertRolesWithPromptsResponse;
 import institute.dto.AnalysisDecisionRequest;
 import institute.dto.AnalysisDecisionResponse;
 import institute.dto.WhichModelRequest;
@@ -29,6 +30,12 @@ public class AIExpertDecisionController {
     @Operation(summary = "获取专家角色列表", description = "根据研究内容，让大模型推荐5个专家角色")
     public ExpertRolesResponse getExpertRoles(@RequestBody ExpertRolesRequest request) {
         return aiExpertDecisionService.getExpertRoles(request);
+    }
+
+    @PostMapping("getExpertRolesWithPrompts")
+    @Operation(summary = "获取专家角色列表和提示词", description = "根据研究内容，让大模型推荐5个专家角色并生成对应的提示词")
+    public ExpertRolesWithPromptsResponse getExpertRolesWithPrompts(@RequestBody ExpertRolesRequest request) {
+        return aiExpertDecisionService.getExpertRolesWithPrompts(request);
     }
 
     @PostMapping("generateExpertsPrompts")

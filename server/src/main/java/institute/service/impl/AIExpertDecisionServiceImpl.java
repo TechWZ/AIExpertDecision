@@ -13,7 +13,9 @@ import institute.dto.ExpertPromptsRequest;
 import institute.dto.ExpertPromptsResponse;
 import institute.dto.ExpertRolesRequest;
 import institute.dto.ExpertRolesResponse;
+import institute.dto.ExpertRolesWithPromptsResponse;
 import institute.dto.ExpertRole;
+import institute.dto.ExpertRoleWithPrompt;
 import institute.dto.AnalysisDecisionRequest;
 import institute.dto.AnalysisDecisionResponse;
 import institute.dto.WhichModelRequest;
@@ -283,6 +285,98 @@ public class AIExpertDecisionServiceImpl implements AIExpertDecisionService {
         
         promptBuilder.append("请用简洁明了的方式回答。");
         
+        return promptBuilder.toString();
+    }
+
+    @Override
+    public ExpertRolesWithPromptsResponse getExpertRolesWithPrompts(ExpertRolesRequest request) {
+        // 验证输入参数
+        if (request.getContent() == null || request.getContent().trim().isEmpty()) {
+            throw new IllegalArgumentException("研究内容不能为空");
+        }
+        
+        // 构建发送给大模型的提示词
+        String prompt = buildExpertRolesWithPromptsPrompt(request.getContent());
+        
+        // 调用AI服务获取响应
+        String aiResponseString = deepSeekService.getCompletion(prompt);
+        
+        // 解析AI响应获取专家角色和提示词列表
+        try {
+            // 清理AI响应，提取JSON内容
+            String cleanedResponse = cleanAiResponse(aiResponseString);
+            
+            ObjectMapper objectMapper = new ObjectMapper();
+            JsonNode jsonNode = objectMapper.readTree(cleanedResponse);
+            
+            List<ExpertRoleWithPrompt> expertRolesWithPrompts = new ArrayList<>();
+            
+            JsonNode expertsNode = jsonNode.get("experts");
+            if (expertsNode != null && expertsNode.isArray()) {
+                for (JsonNode expertNode : expertsNode) {
+                    String roleName = expertNode.get("roleName").asText();
+                    Integer matchScore = expertNode.get("matchScore").asInt();
+                    String promptText = expertNode.get("prompt").asText();
+                    
+                    expertRolesWithPrompts.add(new ExpertRoleWithPrompt(roleName, matchScore, promptText));
+                }
+            }
+            
+            return new ExpertRolesWithPromptsResponse(true, request.getContent(), 
+                                                    expertRolesWithPrompts, "专家角色和提示词推荐完成");
+            
+        } catch (Exception e) {
+            // 如果解析失败，返回错误响应
+            return new ExpertRolesWithPromptsResponse(false, request.getContent(), 
+                                                    new ArrayList<>(), "AI分析过程中出现错误: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 构建获取专家角色和提示词的提示词
+     */
+    private String buildExpertRolesWithPromptsPrompt(String content) {
+        StringBuilder promptBuilder = new StringBuilder();
+        promptBuilder.append("作为AI专家推荐系统，请根据以下研究内容推荐5个最合适的专家角色，并为每个专家角色编写详细的提示词。\n\n");
+        promptBuilder.append("研究内容：").append(content).append("\n\n");
+        promptBuilder.append("请分析这个研究内容，并推荐5个能够从不同专业角度提供有价值分析的专家角色，同时为每个专家编写相应的提示词。\n\n");
+        promptBuilder.append("要求：\n");
+        promptBuilder.append("1. 专家角色应该涵盖该研究领域的核心方面\n");
+        promptBuilder.append("2. 每个专家都应该能够从其专业领域提供独特见解\n");
+        promptBuilder.append("3. 专家角色应该具有互补性，避免重复\n");
+        promptBuilder.append("4. 专家角色名称应该具体明确，体现专业领域\n");
+        promptBuilder.append("5. 为每个专家角色提供匹配度评分(0-100分)\n");
+        promptBuilder.append("6. 为每个专家编写详细的提示词，包含角色背景、专业能力描述、分析重点和方法论\n\n");
+        promptBuilder.append("请按以下JSON格式返回结果：\n");
+        promptBuilder.append("{\n");
+        promptBuilder.append("  \"experts\": [\n");
+        promptBuilder.append("    {\n");
+        promptBuilder.append("      \"roleName\": \"专家角色名称\",\n");
+        promptBuilder.append("      \"matchScore\": 95,\n");
+        promptBuilder.append("      \"prompt\": \"详细的专家提示词内容，包括角色背景、专业能力、分析重点等\"\n");
+        promptBuilder.append("    },\n");
+        promptBuilder.append("    {\n");
+        promptBuilder.append("      \"roleName\": \"专家角色名称2\",\n");
+        promptBuilder.append("      \"matchScore\": 90,\n");
+        promptBuilder.append("      \"prompt\": \"详细的专家提示词内容2\"\n");
+        promptBuilder.append("    },\n");
+        promptBuilder.append("    {\n");
+        promptBuilder.append("      \"roleName\": \"专家角色名称3\",\n");
+        promptBuilder.append("      \"matchScore\": 85,\n");
+        promptBuilder.append("      \"prompt\": \"详细的专家提示词内容3\"\n");
+        promptBuilder.append("    },\n");
+        promptBuilder.append("    {\n");
+        promptBuilder.append("      \"roleName\": \"专家角色名称4\",\n");
+        promptBuilder.append("      \"matchScore\": 80,\n");
+        promptBuilder.append("      \"prompt\": \"详细的专家提示词内容4\"\n");
+        promptBuilder.append("    },\n");
+        promptBuilder.append("    {\n");
+        promptBuilder.append("      \"roleName\": \"专家角色名称5\",\n");
+        promptBuilder.append("      \"matchScore\": 75,\n");
+        promptBuilder.append("      \"prompt\": \"详细的专家提示词内容5\"\n");
+        promptBuilder.append("    }\n");
+        promptBuilder.append("  ]\n");
+        promptBuilder.append("}");
         return promptBuilder.toString();
     }
 }

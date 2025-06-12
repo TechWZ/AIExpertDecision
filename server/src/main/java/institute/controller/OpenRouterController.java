@@ -9,6 +9,7 @@ import institute.dto.ExpertPromptsRequest;
 import institute.dto.ExpertPromptsResponse;
 import institute.dto.ExpertRolesRequest;
 import institute.dto.ExpertRolesResponse;
+import institute.dto.ExpertRolesWithPromptsResponse;
 import institute.dto.AnalysisDecisionRequest;
 import institute.dto.AnalysisDecisionResponse;
 import institute.service.OpenRouterService;
@@ -27,6 +28,12 @@ public class OpenRouterController {
     @Operation(summary = "获取专家角色列表 (OpenRouter)", description = "基于OpenRouter API，根据研究内容让大模型推荐5个专家角色")
     public ExpertRolesResponse getExpertRoles(@RequestBody ExpertRolesRequest request) {
         return openRouterService.getExpertRoles(request);
+    }
+
+    @PostMapping("getExpertRolesWithPrompts2Model")
+    @Operation(summary = "获取专家角色列表和提示词 (OpenRouter)", description = "基于OpenRouter API，根据研究内容让大模型推荐5个专家角色并生成对应的提示词")
+    public ExpertRolesWithPromptsResponse getExpertRolesWithPrompts(@RequestBody ExpertRolesRequest request) {
+        return openRouterService.getExpertRolesWithPrompts(request);
     }
 
     @PostMapping("generateExpertsPrompts2Model")

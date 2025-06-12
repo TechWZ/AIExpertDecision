@@ -12,12 +12,12 @@ const API_BASE_URL = isDevelopment
 // API路径配置
 const API_PATHS = {
   // DeepSeek R1 模型的API路径
-  getExpertRoles: `${API_BASE_URL}/getExpertRoles`,
+  getExpertRolesWithPrompts: `${API_BASE_URL}/getExpertRolesWithPrompts`,
   generateExpertsPrompts: `${API_BASE_URL}/generateExpertsPrompts`,
   executeAnalysisDecision: `${API_BASE_URL}/executeAnalysisDecision`,
   
   // Gemini 2.5 Pro Preview 模型的API路径
-  getExpertRoles2Model: `${API_BASE_URL}/getExpertRoles2Model`,
+  getExpertRolesWithPrompts2Model: `${API_BASE_URL}/getExpertRolesWithPrompts2Model`,
   generateExpertsPrompts2Model: `${API_BASE_URL}/generateExpertsPrompts2Model`,
   executeAnalysisDecision2Model: `${API_BASE_URL}/executeAnalysisDecision2Model`,
   

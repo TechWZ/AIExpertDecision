@@ -46,44 +46,28 @@ const sendMessage = async () => {
   
   try {
     const loadingMessage = ElMessage.info({
-      message: '正在为您推荐专家角色...',
+      message: '正在为您推荐专家角色并生成提示词...',
       duration: 0 // 设置为0表示不自动关闭
     });
     
-    // 根据选择的模型调用不同的API
+    // 根据选择的模型调用不同的新API
     let result;
     if (selectedModel.value === 'deepSeekR1') {
-      result = await expertStore.fetchRecommendedExperts(userDecisionRequirement, API_PATHS.getExpertRoles);
+      result = await expertStore.fetchRecommendedExperts(userDecisionRequirement, API_PATHS.getExpertRolesWithPrompts);
     } else if (selectedModel.value === 'gemini2.5ProPreview') {
-      result = await expertStore.fetchRecommendedExperts(userDecisionRequirement, API_PATHS.getExpertRoles2Model);
+      result = await expertStore.fetchRecommendedExperts(userDecisionRequirement, API_PATHS.getExpertRolesWithPrompts2Model);
     }
     
     // 关闭loading消息
     loadingMessage.close();
-    ElMessage.success('专家角色推荐成功');
+    ElMessage.success('专家角色推荐和提示词生成成功');
     console.log('推荐结果:', result);
     
     // 更新步骤状态为1
     stepsStore.setStep(1);
     
-    // 立即跳转到专家列表页面，不等待提示词获取
+    // 跳转到专家列表页面
     router.push('/expertlist');
-    
-    // 在后台异步获取专家提示词，不阻塞页面跳转
-    const expertRoles = result.expertRoles?.map(role => role.roleName) || [];
-    if (expertRoles.length > 0) {
-      // 异步获取专家提示词，不使用 await
-      expertStore.fetchExpertPrompts(expertRoles, userDecisionRequirement, selectedModel.value)
-        .then(promptsResult => {
-          // 成功获取提示词后
-          console.log('专家提示词获取成功:', promptsResult);
-          ElMessage.success('专家提示词生成成功');
-        })
-        .catch(promptError => {
-          console.error('获取专家提示词失败:', promptError);
-          // 静默处理错误，不显示错误消息
-        });
-    }
     
   } catch (error) {
     console.error('请求失败:', error);
