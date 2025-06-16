@@ -3,7 +3,7 @@ import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import dayjs from 'dayjs'
 import { ArrowDown, Check } from '@element-plus/icons-vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage, EVENT_CODE } from 'element-plus'
 import { useExpertStore } from '@/stores/expertStore'
 import { API_PATHS } from '@/config/api'
 
@@ -53,9 +53,35 @@ const form = ref({
 })
 
 const deleteRow = (index) => {
+  const expert = customExperts.value[index]
+  
+  // 如果该专家已被选中，需要从selectedExperts中移除
+  if (expert.selected) {
+    const selectedIndex = selectedExperts.value.findIndex(e => e.role_name === expert.role_name && e.isCustom)
+    if (selectedIndex !== -1) {
+      const expertId = selectedExperts.value[selectedIndex].id
+      selectedExperts.value.splice(selectedIndex, 1)
+      delete expertInputs.value[expertId]
+    }
+  }
+  
   // 清理对应的按钮状态
   delete customExpertButtonStates.value[index]
+  
+  // 删除专家
   customExperts.value.splice(index, 1)
+  
+  // 重新调整按钮状态的索引（因为数组索引发生变化）
+  const newButtonStates = {}
+  Object.keys(customExpertButtonStates.value).forEach(key => {
+    const keyIndex = parseInt(key)
+    if (keyIndex > index) {
+      newButtonStates[keyIndex - 1] = customExpertButtonStates.value[key]
+    } else if (keyIndex < index) {
+      newButtonStates[keyIndex] = customExpertButtonStates.value[key]
+    }
+  })
+  customExpertButtonStates.value = newButtonStates
 }
 
 const handleModelSelect = (model, index) => {
@@ -68,6 +94,43 @@ const handleModelSelect = (model, index) => {
 
 const handleCustomModelSelect = (model, index) => {
   customExperts.value[index].model = model
+}
+
+// 处理自定义专家选择
+const handleCustomExpertSelect = (value, index) => {
+  customExperts.value[index].selected = value
+
+  const expert = customExperts.value[index]
+
+  if (value) {
+    // 选中时，添加到选中列表并初始化输入内容
+    if (!selectedExperts.value.find(e => e.role_name === expert.role_name && e.isCustom)) {
+      const customExpert = {
+        ...expert,
+        id: `custom_${index}`, // 为自定义专家创建唯一ID
+        date: expert.role_name, // 使用role_name作为显示名称
+        isCustom: true // 标记为自定义专家
+      }
+      selectedExperts.value.push(customExpert)
+      expertInputs.value[customExpert.id] = expert.prompt || ''
+    }
+  } else {
+    // 取消选中时，从列表中移除并删除输入内容
+    const expertIndex = selectedExperts.value.findIndex(e => e.role_name === expert.role_name && e.isCustom)
+    if (expertIndex !== -1) {
+      const expertId = selectedExperts.value[expertIndex].id
+      selectedExperts.value.splice(expertIndex, 1)
+      delete expertInputs.value[expertId]
+    }
+  }
+}
+
+// 同步自定义专家的提示词到输入框
+const syncCustomExpertPrompt = (expertName, prompt) => {
+  const selectedExpert = selectedExperts.value.find(e => e.role_name === expertName && e.isCustom)
+  if (selectedExpert) {
+    expertInputs.value[selectedExpert.id] = prompt
+  }
 }
 
 const handleExpertSelect = (value, index) => {
@@ -105,6 +168,7 @@ const confirmAddExpert = () => {
       role_name: form.value.role_name,
       model: form.value.model,
       prompt: form.value.prompt,
+      selected: false, // 添加选择状态
     })
     // 重置表单
     form.value.role_name = ''
@@ -152,22 +216,51 @@ const writeSystemPrompt = (expertId) => {
   }
 }
 
+// 模态对话框状态
+const promptDialogVisible = ref(false)
+const currentExpertIndex = ref(-1)
+const input = ref([])
+
+// 打开获取提示词模态对话框
+const openPromptDialog = (index) => {
+  currentExpertIndex.value = index
+  input.value = []
+  promptDialogVisible.value = true
+}
+
 // 获取自定义专家系统提示词
-const fetchCustomExpertPrompt = async (index, expertName) => {
+const fetchCustomExpertPrompt = async () => {
+  if (currentExpertIndex.value === -1) return
+  
+  const index = currentExpertIndex.value
+  const expertName = customExperts.value[index].role_name
+  
   // 设置按钮为加载状态
   customExpertButtonStates.value[index] = 'loading'
+  promptDialogVisible.value = false
   
   try {
-    // 模拟API调用，实际需要替换为真实的API路径
-    const response = await fetch('/server/getCustomExpertPrompt', {
+    // 根据当前模型选择API路径
+    const apiPath = selectedModel.value === 'gemini2.5ProPreview' 
+      ? API_PATHS.generateExpertsPrompts2Model
+      : API_PATHS.generateExpertsPrompts
+    
+    const requestBody = {
+      expertRoles: [expertName],
+      decisionRequirement: userContent.value
+    }
+    
+    // 如果有分析角度，将其添加到决策需求中
+    if (input.value.length > 0) {
+      requestBody.decisionRequirement += `\n分析角度：${input.value.join('、')}`
+    }
+    
+    const response = await fetch(apiPath, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        expertName: expertName,
-        userContent: userContent.value
-      })
+      body: JSON.stringify(requestBody)
     })
     
     if (!response.ok) {
@@ -176,11 +269,23 @@ const fetchCustomExpertPrompt = async (index, expertName) => {
     
     const result = await response.json()
     
-    // 假设API返回格式为 {prompt: "提示词内容"}
-    if (result.prompt) {
-      customExperts.value[index].prompt = result.prompt
-      customExpertButtonStates.value[index] = 'write'
-      ElMessage.success('系统提示词获取成功')
+    // 根据实际API响应格式解析数据
+    if (result.success && result.aiResponse && result.aiResponse.expertPrompts) {
+      const expertPrompts = result.aiResponse.expertPrompts
+      const prompt = expertPrompts[expertName]
+      
+      if (prompt) {
+        customExperts.value[index].prompt = prompt
+        // 直接写入后恢复到获取状态，允许用户再次获取不同分析角度的提示词
+        customExpertButtonStates.value[index] = 'fetch'
+        
+        // 同步到选中专家的输入框
+        syncCustomExpertPrompt(expertName, prompt)
+        
+        ElMessage.success('系统提示词获取成功并已写入')
+      } else {
+        throw new Error('未找到该专家的提示词')
+      }
     } else {
       throw new Error('API响应格式不正确')
     }
@@ -196,6 +301,11 @@ const fetchCustomExpertPrompt = async (index, expertName) => {
 const writeCustomExpertPrompt = (index, expertName) => {
   // 直接使用已经获取到的提示词（已经在fetchCustomExpertPrompt中写入到expert.prompt）
   ElMessage.success('提示词已写入')
+}
+
+// 根据专家名称获取自定义专家的索引
+const getCustomExpertIndex = (expertName) => {
+  return customExperts.value.findIndex(expert => expert.role_name === expertName)
 }
 
 // 确认提交，跳转到报告页面
@@ -215,13 +325,7 @@ const confirmSubmit = async () => {
       }
     })
     
-    // 添加自定义专家数据
-    customExperts.value.forEach(expert => {
-      if (expert.role_name.trim()) {
-        // 使用自定义专家的提示词，如果没有则使用空字符串
-        requestData.expertPrompts[expert.role_name] = expert.prompt || ''
-      }
-    })
+    // 不再单独处理自定义专家，因为选中的自定义专家已经在selectedExperts中了
     
     if (Object.keys(requestData.expertPrompts).length === 0) {
       ElMessage.warning('请先选择专家并填写提示词')
@@ -351,7 +455,7 @@ const confirmSubmit = async () => {
       <br>
       <el-card shadow="never" class="table-card">
         <template #header>
-          <h3>自定义专家</h3>
+          <h3>现实专家</h3>
         </template>
         <el-table :data="customExperts" style="width: 100%">
           <el-table-column fixed prop="role_name" label="专家" width="150" />
@@ -376,30 +480,12 @@ const confirmSubmit = async () => {
               </el-dropdown>
             </template>
           </el-table-column>
-          <el-table-column label="系统提示词" width="140">
+          <el-table-column label="" min-width="80">
             <template #default="scope">
-              <el-button 
-                v-if="!customExpertButtonStates[scope.$index] || customExpertButtonStates[scope.$index] === 'fetch'"
-                type="primary" 
-                size="small" 
-                @click="fetchCustomExpertPrompt(scope.$index, scope.row.role_name)">
-                获取系统提示词
-              </el-button>
-              <el-button 
-                v-else-if="customExpertButtonStates[scope.$index] === 'loading'"
-                type="primary" 
-                size="small" 
-                :loading="true"
-                disabled>
-                正在获取系统提示词
-              </el-button>
-              <el-button 
-                v-else-if="customExpertButtonStates[scope.$index] === 'write'"
-                type="success" 
-                size="small" 
-                @click="writeCustomExpertPrompt(scope.$index, scope.row.role_name)">
-                写入系统提示词
-              </el-button>
+              <div class="status-cell">
+                <el-button :type="scope.row.selected ? 'primary' : ''" :icon="scope.row.selected ? Check : ''" circle
+                  @click="handleCustomExpertSelect(!scope.row.selected, scope.$index)" />
+              </div>
             </template>
           </el-table-column>
           <el-table-column fixed="right" label="操作" min-width="80">
@@ -422,27 +508,33 @@ const confirmSubmit = async () => {
           <template #header>
             <div class="card-header">
               <span>{{ expert.date }}</span>
-              <el-button type="primary" size="small" 
+              <!-- 推荐专家的按钮 -->
+              <el-button v-if="!expert.isCustom" type="primary" size="small" 
                 :disabled="!promptButtonsEnabled || !expertPrompts[expert.id]"
                 @click="writeSystemPrompt(expert.id)">
                 写入系统提示词
               </el-button>
+              <!-- 自定义专家的按钮 -->
+              <template v-else>
+                <el-button 
+                  v-if="!customExpertButtonStates[getCustomExpertIndex(expert.role_name)] || customExpertButtonStates[getCustomExpertIndex(expert.role_name)] === 'fetch'"
+                  type="primary" 
+                  size="small" 
+                  @click="openPromptDialog(getCustomExpertIndex(expert.role_name))">
+                  获取提示词
+                </el-button>
+                <el-button 
+                  v-else-if="customExpertButtonStates[getCustomExpertIndex(expert.role_name)] === 'loading'"
+                  type="primary" 
+                  size="small" 
+                  :loading="true"
+                  disabled>
+                  正在获取提示词
+                </el-button>
+              </template>
             </div>
           </template>
           <el-input v-model="expertInputs[expert.id]" style="width: 100%" :autosize="{ minRows: 2 }" type="textarea"
-            placeholder="请输入提示词" />
-        </el-card>
-      </div>
-      
-      <!-- 自定义专家提示词 -->
-      <div v-for="(expert, index) in customExperts" :key="`custom_${index}`" style="margin-bottom: 20px;">
-        <el-card style="max-width: 480px">
-          <template #header>
-            <div class="card-header">
-              <span>{{ expert.role_name }}</span>
-            </div>
-          </template>
-          <el-input v-model="expert.prompt" style="width: 100%" :autosize="{ minRows: 2 }" type="textarea"
             placeholder="请输入提示词" />
         </el-card>
       </div>
@@ -476,6 +568,23 @@ const confirmSubmit = async () => {
         <el-button @click="dialogFormVisible = false">取消</el-button>
         <el-button type="primary" @click="confirmAddExpert">
           确认
+        </el-button>
+      </div>
+    </template>
+  </el-dialog>
+
+  <!-- 获取提示词对话框 -->
+  <el-dialog v-model="promptDialogVisible" title="获取提示词" width="500">
+    <el-form>
+      <el-form-item label="分析角度" :label-width="formLabelWidth">
+        <el-input-tag v-model="input" :trigger="EVENT_CODE.space" placeholder="Please input" />
+      </el-form-item>
+    </el-form>
+    <template #footer>
+      <div class="dialog-footer">
+        <el-button @click="promptDialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="fetchCustomExpertPrompt">
+          获取
         </el-button>
       </div>
     </template>
