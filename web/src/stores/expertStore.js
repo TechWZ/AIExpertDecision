@@ -13,7 +13,7 @@ export const useExpertStore = defineStore('expert', () => {
   const error = ref(null)
 
   // 获取推荐专家数据（新API直接返回专家角色和提示词）
-  const fetchRecommendedExperts = async (content, apiPath) => {
+  const fetchRecommendedExperts = async (content, apiPath, analysisAngles = [""]) => {
     isLoading.value = true
     error.value = null
     
@@ -24,7 +24,8 @@ export const useExpertStore = defineStore('expert', () => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          content: content
+          content: content,
+          analysisAngles: analysisAngles
         })
       })
       

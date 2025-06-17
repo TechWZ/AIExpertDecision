@@ -2,6 +2,7 @@ package institute.service.impl;
 
 import java.util.List;
 import java.util.ArrayList;
+import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -41,7 +42,7 @@ public class AIExpertDecisionServiceImpl implements AIExpertDecisionService {
         }
         
         // 构建发送给大模型的提示词
-        String prompt = buildExpertRolesPrompt(request.getContent());
+        String prompt = buildExpertRolesPrompt(request.getContent(), request.getAnalysisAngles());
         
         // 调用AI服务获取响应
         String aiResponseString = deepSeekService.getCompletion(prompt);
@@ -94,7 +95,7 @@ public class AIExpertDecisionServiceImpl implements AIExpertDecisionService {
         
         // 构建并返回响应对象
         return new ExpertPromptsResponse(true, request.getDecisionRequirement(), 
-                                       request.getExpertRoles(), aiResponse);
+                                       aiResponse);
     }
 
     @Override
@@ -138,17 +139,36 @@ public class AIExpertDecisionServiceImpl implements AIExpertDecisionService {
     /**
      * 构建获取专家角色的提示词
      */
-    private String buildExpertRolesPrompt(String content) {
+    private String buildExpertRolesPrompt(String content, List<String> analysisAngles) {
         StringBuilder promptBuilder = new StringBuilder();
         promptBuilder.append("作为AI专家推荐系统，请根据以下研究内容推荐5个最合适的专家角色。\n\n");
         promptBuilder.append("研究内容：").append(content).append("\n\n");
-        promptBuilder.append("请分析这个研究内容，并推荐5个能够从不同专业角度提供有价值分析的专家角色。\n\n");
+        
+        // 如果提供了分析角度，将其加入提示词
+        if (analysisAngles != null && !analysisAngles.isEmpty()) {
+            promptBuilder.append("分析角度：\n");
+            for (int i = 0; i < analysisAngles.size(); i++) {
+                promptBuilder.append((i + 1)).append(". ").append(analysisAngles.get(i)).append("\n");
+            }
+            promptBuilder.append("\n");
+            promptBuilder.append("请综合考虑研究内容和指定的分析角度，推荐5个能够从不同专业角度提供有价值分析的专家角色。\n\n");
+        } else {
+            promptBuilder.append("请分析这个研究内容，并推荐5个能够从不同专业角度提供有价值分析的专家角色。\n\n");
+        }
+        
         promptBuilder.append("要求：\n");
         promptBuilder.append("1. 专家角色应该涵盖该研究领域的核心方面\n");
         promptBuilder.append("2. 每个专家都应该能够从其专业领域提供独特见解\n");
         promptBuilder.append("3. 专家角色应该具有互补性，避免重复\n");
         promptBuilder.append("4. 专家角色名称应该具体明确，体现专业领域\n");
-        promptBuilder.append("5. 为每个专家角色提供匹配度评分(0-100分)\n\n");
+        
+        if (analysisAngles != null && !analysisAngles.isEmpty()) {
+            promptBuilder.append("5. 专家角色的选择应该与指定的分析角度相关联\n");
+            promptBuilder.append("6. 为每个专家角色提供匹配度评分(0-100分)\n\n");
+        } else {
+            promptBuilder.append("5. 为每个专家角色提供匹配度评分(0-100分)\n\n");
+        }
+        
         promptBuilder.append("请按以下JSON格式返回结果：\n");
         promptBuilder.append("{\n");
         promptBuilder.append("  \"expertRoles\": [\n");
@@ -182,18 +202,36 @@ public class AIExpertDecisionServiceImpl implements AIExpertDecisionService {
      */
     private String buildPrompt(ExpertPromptsRequest request) {
         StringBuilder promptBuilder = new StringBuilder();
-        promptBuilder.append("作为AI专家决策系统，请根据以下决策需求和专家角色列表，为每个专家角色编写专业的提示词。\n\n");
+        promptBuilder.append("作为AI专家决策系统，请根据以下决策需求和专家角色（包含每个专家的分析角度），为每个专家角色编写专业的提示词。\n\n");
         promptBuilder.append("决策需求：").append(request.getDecisionRequirement()).append("\n\n");
-        promptBuilder.append("专家角色列表：\n");
-        for (int i = 0; i < request.getExpertRoles().size(); i++) {
-            promptBuilder.append((i + 1)).append(". ").append(request.getExpertRoles().get(i)).append("\n");
+        
+        promptBuilder.append("专家角色及其分析角度：\n");
+        int i = 1;
+        for (Map.Entry<String, List<String>> entry : request.getExpertRoles().entrySet()) {
+            String roleName = entry.getKey();
+            List<String> analysisAngles = entry.getValue();
+            
+            promptBuilder.append(i++).append(". ").append(roleName).append("\n");
+            promptBuilder.append("   分析角度：");
+            if (analysisAngles != null && !analysisAngles.isEmpty()) {
+                for (int j = 0; j < analysisAngles.size(); j++) {
+                    if (j > 0) promptBuilder.append(", ");
+                    promptBuilder.append(analysisAngles.get(j));
+                }
+            } else {
+                promptBuilder.append("通用分析");
+            }
+            promptBuilder.append("\n");
         }
+        
         promptBuilder.append("\n请为每个专家角色编写详细的提示词，确保：\n");
         promptBuilder.append("1. 每个提示词都针对该专家的专业领域\n");
         promptBuilder.append("2. 提示词包含角色背景、专业能力描述\n");
         promptBuilder.append("3. 明确该专家在此决策中的分析重点\n");
-        promptBuilder.append("4. 提供具体的分析框架或方法论\n\n");
-        promptBuilder.append("请按以下JSON格式返回结果：\n");
+        promptBuilder.append("4. 提供具体的分析框架或方法论\n");
+        promptBuilder.append("5. 特别结合该专家对应的分析角度来构建提示词，确保专家能从指定角度进行深入分析\n");
+        
+        promptBuilder.append("\n请按以下JSON格式返回结果：\n");
         promptBuilder.append("{\n");
         promptBuilder.append("  \"expertPrompts\": {\n");
         promptBuilder.append("    \"专家角色名称1\": \"对应的提示词内容\",\n");
@@ -210,18 +248,34 @@ public class AIExpertDecisionServiceImpl implements AIExpertDecisionService {
         StringBuilder promptBuilder = new StringBuilder();
         promptBuilder.append("作为AI专家决策系统，请根据以下研究内容和各专家角色的提示词，生成一份完整的专家分析决策报告。\n\n");
         promptBuilder.append("研究内容：").append(request.getContent()).append("\n\n");
-        promptBuilder.append("专家角色及其提示词：\n");
+        
+        // 添加AI专家角色及其提示词
+        promptBuilder.append("AI专家角色及其提示词：\n");
         request.getExpertPrompts().forEach((role, prompt) -> {
             promptBuilder.append("## ").append(role).append("\n");
             promptBuilder.append("**提示词：** ").append(prompt).append("\n\n");
         });
         
+        // 添加现实专家决策（如果存在）
+        if (request.getRealExpertDecisions() != null && !request.getRealExpertDecisions().isEmpty()) {
+            promptBuilder.append("现实专家决策：\n");
+            request.getRealExpertDecisions().forEach((expertName, decision) -> {
+                promptBuilder.append("## ").append(expertName).append("\n");
+                promptBuilder.append("**决策结论：** ").append(decision).append("\n\n");
+            });
+        }
+        
         promptBuilder.append("请按照以下要求生成专家分析决策报告：\n");
-        promptBuilder.append("1. 为每个专家角色提供详细的分析观点\n");
-        promptBuilder.append("2. 每个专家的建议和决策\n");
-        promptBuilder.append("3. 各专家观点的置信度评估\n");
-        promptBuilder.append("4. 最后提供综合分析结论和整体评分\n\n");
-        promptBuilder.append("请使用清晰的markdown格式组织报告，包含标题、子标题、列表等格式元素，使报告易于阅读。");
+        promptBuilder.append("1. 为每个AI专家角色提供详细的分析观点\n");
+        promptBuilder.append("2. 每个AI专家的建议和决策\n");
+        promptBuilder.append("3. 各AI专家观点的置信度评估\n");
+        if (request.getRealExpertDecisions() != null && !request.getRealExpertDecisions().isEmpty()) {
+            promptBuilder.append("4. 原封不动地包含所有现实专家的决策结论\n");
+            promptBuilder.append("5. 在综合分析结论中，充分考虑现实专家的决策意见，结合AI专家的分析，提供最终的综合评估和建议\n");
+        } else {
+            promptBuilder.append("4. 最后提供综合分析结论和整体评分\n");
+        }
+        promptBuilder.append("\n请使用清晰的markdown格式组织报告，包含标题、子标题、列表等格式元素，使报告易于阅读。");
         
         return promptBuilder.toString();
     }
@@ -296,7 +350,7 @@ public class AIExpertDecisionServiceImpl implements AIExpertDecisionService {
         }
         
         // 构建发送给大模型的提示词
-        String prompt = buildExpertRolesWithPromptsPrompt(request.getContent());
+        String prompt = buildExpertRolesWithPromptsPrompt(request.getContent(), request.getAnalysisAngles());
         
         // 调用AI服务获取响应
         String aiResponseString = deepSeekService.getCompletion(prompt);
@@ -335,18 +389,38 @@ public class AIExpertDecisionServiceImpl implements AIExpertDecisionService {
     /**
      * 构建获取专家角色和提示词的提示词
      */
-    private String buildExpertRolesWithPromptsPrompt(String content) {
+    private String buildExpertRolesWithPromptsPrompt(String content, List<String> analysisAngles) {
         StringBuilder promptBuilder = new StringBuilder();
         promptBuilder.append("作为AI专家推荐系统，请根据以下研究内容推荐5个最合适的专家角色，并为每个专家角色编写详细的提示词。\n\n");
         promptBuilder.append("研究内容：").append(content).append("\n\n");
-        promptBuilder.append("请分析这个研究内容，并推荐5个能够从不同专业角度提供有价值分析的专家角色，同时为每个专家编写相应的提示词。\n\n");
+        
+        // 如果提供了分析角度，将其加入提示词
+        if (analysisAngles != null && !analysisAngles.isEmpty()) {
+            promptBuilder.append("分析角度：\n");
+            for (int i = 0; i < analysisAngles.size(); i++) {
+                promptBuilder.append((i + 1)).append(". ").append(analysisAngles.get(i)).append("\n");
+            }
+            promptBuilder.append("\n");
+            promptBuilder.append("请综合考虑研究内容和指定的分析角度，推荐5个能够从不同专业角度提供有价值分析的专家角色，同时为每个专家编写相应的提示词。\n\n");
+        } else {
+            promptBuilder.append("请分析这个研究内容，并推荐5个能够从不同专业角度提供有价值分析的专家角色，同时为每个专家编写相应的提示词。\n\n");
+        }
+        
         promptBuilder.append("要求：\n");
         promptBuilder.append("1. 专家角色应该涵盖该研究领域的核心方面\n");
         promptBuilder.append("2. 每个专家都应该能够从其专业领域提供独特见解\n");
         promptBuilder.append("3. 专家角色应该具有互补性，避免重复\n");
         promptBuilder.append("4. 专家角色名称应该具体明确，体现专业领域\n");
-        promptBuilder.append("5. 为每个专家角色提供匹配度评分(0-100分)\n");
-        promptBuilder.append("6. 为每个专家编写详细的提示词，包含角色背景、专业能力描述、分析重点和方法论\n\n");
+        
+        if (analysisAngles != null && !analysisAngles.isEmpty()) {
+            promptBuilder.append("5. 专家角色的选择应该与指定的分析角度相关联\n");
+            promptBuilder.append("6. 为每个专家角色提供匹配度评分(0-100分)\n");
+            promptBuilder.append("7. 为每个专家编写详细的提示词，包含角色背景、专业能力描述、分析重点和方法论，特别要结合指定的分析角度\n\n");
+        } else {
+            promptBuilder.append("5. 为每个专家角色提供匹配度评分(0-100分)\n");
+            promptBuilder.append("6. 为每个专家编写详细的提示词，包含角色背景、专业能力描述、分析重点和方法论\n\n");
+        }
+        
         promptBuilder.append("请按以下JSON格式返回结果：\n");
         promptBuilder.append("{\n");
         promptBuilder.append("  \"experts\": [\n");

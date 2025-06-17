@@ -14,6 +14,9 @@ const router = useRouter()
 // 自定义专家数据
 const customExperts = ref([])
 
+// 现实专家数据
+const realExperts = ref([])
+
 // 获取推荐专家数据（来自API）
 const recommendedExperts = computed(() => expertStore.recommendedExperts)
 
@@ -38,6 +41,7 @@ const tableData = computed(() => {
 
 const selectedExperts = ref([])
 const dialogFormVisible = ref(false)
+const realExpertDialogVisible = ref(false)
 const formLabelWidth = '140px'
 
 // 存储每个选中专家的输入内容
@@ -50,6 +54,11 @@ const form = ref({
   role_name: '',
   model: 'GPT-4',
   prompt: ''
+})
+
+const realExpertForm = ref({
+  role_name: '',
+  decision: ''
 })
 
 const deleteRow = (index) => {
@@ -82,6 +91,23 @@ const deleteRow = (index) => {
     }
   })
   customExpertButtonStates.value = newButtonStates
+}
+
+const deleteRealExpert = (index) => {
+  const expert = realExperts.value[index]
+  
+  // 如果该专家已被选中，需要从selectedExperts中移除
+  if (expert.selected) {
+    const selectedIndex = selectedExperts.value.findIndex(e => e.role_name === expert.role_name && e.isReal)
+    if (selectedIndex !== -1) {
+      const expertId = selectedExperts.value[selectedIndex].id
+      selectedExperts.value.splice(selectedIndex, 1)
+      delete expertInputs.value[expertId]
+    }
+  }
+  
+  // 删除专家
+  realExperts.value.splice(index, 1)
 }
 
 const handleModelSelect = (model, index) => {
@@ -117,6 +143,35 @@ const handleCustomExpertSelect = (value, index) => {
   } else {
     // 取消选中时，从列表中移除并删除输入内容
     const expertIndex = selectedExperts.value.findIndex(e => e.role_name === expert.role_name && e.isCustom)
+    if (expertIndex !== -1) {
+      const expertId = selectedExperts.value[expertIndex].id
+      selectedExperts.value.splice(expertIndex, 1)
+      delete expertInputs.value[expertId]
+    }
+  }
+}
+
+// 处理现实专家选择
+const handleRealExpertSelect = (value, index) => {
+  realExperts.value[index].selected = value
+
+  const expert = realExperts.value[index]
+
+  if (value) {
+    // 选中时，添加到选中列表并初始化输入内容
+    if (!selectedExperts.value.find(e => e.role_name === expert.role_name && e.isReal)) {
+      const realExpert = {
+        ...expert,
+        id: `real_${index}`, // 为现实专家创建唯一ID
+        date: expert.role_name, // 使用role_name作为显示名称
+        isReal: true // 标记为现实专家
+      }
+      selectedExperts.value.push(realExpert)
+      expertInputs.value[realExpert.id] = expert.decision || ''
+    }
+  } else {
+    // 取消选中时，从列表中移除并删除输入内容
+    const expertIndex = selectedExperts.value.findIndex(e => e.role_name === expert.role_name && e.isReal)
     if (expertIndex !== -1) {
       const expertId = selectedExperts.value[expertIndex].id
       selectedExperts.value.splice(expertIndex, 1)
@@ -176,6 +231,24 @@ const confirmAddExpert = () => {
     form.value.prompt = ''
   }
   dialogFormVisible.value = false
+}
+
+const onAddRealExpert = () => {
+  realExpertDialogVisible.value = true
+}
+
+const confirmAddRealExpert = () => {
+  if (realExpertForm.value.role_name.trim()) {
+    realExperts.value.push({
+      role_name: realExpertForm.value.role_name,
+      decision: realExpertForm.value.decision,
+      selected: false, // 添加选择状态
+    })
+    // 重置表单
+    realExpertForm.value.role_name = ''
+    realExpertForm.value.decision = ''
+  }
+  realExpertDialogVisible.value = false
 }
 
 
@@ -245,14 +318,12 @@ const fetchCustomExpertPrompt = async () => {
       ? API_PATHS.generateExpertsPrompts2Model
       : API_PATHS.generateExpertsPrompts
     
+    // 构建新的入参格式
     const requestBody = {
-      expertRoles: [expertName],
+      expertRoles: {
+        [expertName]: input.value.length > 0 ? input.value : [""]
+      },
       decisionRequirement: userContent.value
-    }
-    
-    // 如果有分析角度，将其添加到决策需求中
-    if (input.value.length > 0) {
-      requestBody.decisionRequirement += `\n分析角度：${input.value.join('、')}`
     }
     
     const response = await fetch(apiPath, {
@@ -314,21 +385,33 @@ const confirmSubmit = async () => {
     // 构建请求数据
     const requestData = {
       content: userContent.value,
-      expertPrompts: {}
+      expertPrompts: {},
+      realExpertDecisions: {}
     }
     
     // 添加选中的专家数据
     selectedExperts.value.forEach(expert => {
-      const prompt = expertInputs.value[expert.id] || ''
-      if (prompt.trim()) {
-        requestData.expertPrompts[expert.date] = prompt
+      const content = expertInputs.value[expert.id] || ''
+      if (content.trim()) {
+        if (expert.isReal) {
+          // 现实专家的决策
+          requestData.realExpertDecisions[expert.date] = content
+        } else {
+          // 推荐专家和自定义专家的提示词
+          requestData.expertPrompts[expert.date] = content
+        }
       }
     })
     
+    // 调试信息：查看所有选中的专家
+    console.log('所有选中的专家:', selectedExperts.value)
+    console.log('专家输入内容:', expertInputs.value)
+    console.log('最终请求数据:', requestData)
+    
     // 不再单独处理自定义专家，因为选中的自定义专家已经在selectedExperts中了
     
-    if (Object.keys(requestData.expertPrompts).length === 0) {
-      ElMessage.warning('请先选择专家并填写提示词')
+    if (Object.keys(requestData.expertPrompts).length === 0 && Object.keys(requestData.realExpertDecisions).length === 0) {
+      ElMessage.warning('请先选择专家并填写内容')
       return
     }
     
@@ -455,7 +538,7 @@ const confirmSubmit = async () => {
       <br>
       <el-card shadow="never" class="table-card">
         <template #header>
-          <h3>现实专家</h3>
+          <h3>自定义专家</h3>
         </template>
         <el-table :data="customExperts" style="width: 100%">
           <el-table-column fixed prop="role_name" label="专家" width="150" />
@@ -500,6 +583,33 @@ const confirmSubmit = async () => {
           添加自定义专家
         </el-button>
       </el-card>
+      <br>
+      <el-card shadow="never" class="table-card">
+        <template #header>
+          <h3>现实专家</h3>
+        </template>
+        <el-table :data="realExperts" style="width: 100%">
+          <el-table-column fixed prop="role_name" label="专家" width="150" />
+          <el-table-column label="" min-width="80">
+            <template #default="scope">
+              <div class="status-cell">
+                <el-button :type="scope.row.selected ? 'primary' : ''" :icon="scope.row.selected ? Check : ''" circle
+                  @click="handleRealExpertSelect(!scope.row.selected, scope.$index)" />
+              </div>
+            </template>
+          </el-table-column>
+          <el-table-column fixed="right" label="操作" min-width="80">
+            <template #default="scope">
+              <el-button link type="primary" size="small" @click.prevent="deleteRealExpert(scope.$index)">
+                删除
+              </el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+        <el-button class="mt-4" style="width: 100%" @click="onAddRealExpert">
+          添加现实专家
+        </el-button>
+      </el-card>
     </el-col>
     <el-col :span="12">
       <!-- 提示词 -->
@@ -509,13 +619,13 @@ const confirmSubmit = async () => {
             <div class="card-header">
               <span>{{ expert.date }}</span>
               <!-- 推荐专家的按钮 -->
-              <el-button v-if="!expert.isCustom" type="primary" size="small" 
+              <el-button v-if="!expert.isCustom && !expert.isReal" type="primary" size="small" 
                 :disabled="!promptButtonsEnabled || !expertPrompts[expert.id]"
                 @click="writeSystemPrompt(expert.id)">
                 写入系统提示词
               </el-button>
               <!-- 自定义专家的按钮 -->
-              <template v-else>
+              <template v-else-if="expert.isCustom">
                 <el-button 
                   v-if="!customExpertButtonStates[getCustomExpertIndex(expert.role_name)] || customExpertButtonStates[getCustomExpertIndex(expert.role_name)] === 'fetch'"
                   type="primary" 
@@ -535,7 +645,7 @@ const confirmSubmit = async () => {
             </div>
           </template>
           <el-input v-model="expertInputs[expert.id]" style="width: 100%" :autosize="{ minRows: 2 }" type="textarea"
-            placeholder="请输入提示词" />
+            :placeholder="expert.isReal ? '请输入决策' : '请输入提示词'" />
         </el-card>
       </div>
     </el-col>
@@ -567,6 +677,26 @@ const confirmSubmit = async () => {
       <div class="dialog-footer">
         <el-button @click="dialogFormVisible = false">取消</el-button>
         <el-button type="primary" @click="confirmAddExpert">
+          确认
+        </el-button>
+      </div>
+    </template>
+  </el-dialog>
+
+  <!-- 添加现实专家对话框 -->
+  <el-dialog v-model="realExpertDialogVisible" title="添加现实专家" width="500">
+    <el-form :model="realExpertForm">
+      <el-form-item label="专家名称" :label-width="formLabelWidth">
+        <el-input v-model="realExpertForm.role_name" autocomplete="off" />
+      </el-form-item>
+      <el-form-item label="决策" :label-width="formLabelWidth">
+        <el-input v-model="realExpertForm.decision" type="textarea" :autosize="{ minRows: 3, maxRows: 6 }" placeholder="请输入决策" />
+      </el-form-item>
+    </el-form>
+    <template #footer>
+      <div class="dialog-footer">
+        <el-button @click="realExpertDialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="confirmAddRealExpert">
           确认
         </el-button>
       </div>

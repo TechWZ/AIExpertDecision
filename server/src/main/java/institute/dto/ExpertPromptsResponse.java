@@ -1,12 +1,10 @@
 package institute.dto;
 
 import java.time.LocalDateTime;
-import java.util.List;
 
 public class ExpertPromptsResponse {
     private boolean success;
     private String decisionRequirement;
-    private List<String> expertRoles;
     private Object aiResponse;
     private LocalDateTime timestamp;
 
@@ -14,10 +12,9 @@ public class ExpertPromptsResponse {
         this.timestamp = LocalDateTime.now();
     }
 
-    public ExpertPromptsResponse(boolean success, String decisionRequirement, List<String> expertRoles, Object aiResponse) {
+    public ExpertPromptsResponse(boolean success, String decisionRequirement, Object aiResponse) {
         this.success = success;
         this.decisionRequirement = decisionRequirement;
-        this.expertRoles = expertRoles;
         this.aiResponse = aiResponse;
         this.timestamp = LocalDateTime.now();
     }
@@ -36,14 +33,6 @@ public class ExpertPromptsResponse {
 
     public void setDecisionRequirement(String decisionRequirement) {
         this.decisionRequirement = decisionRequirement;
-    }
-
-    public List<String> getExpertRoles() {
-        return expertRoles;
-    }
-
-    public void setExpertRoles(List<String> expertRoles) {
-        this.expertRoles = expertRoles;
     }
 
     public Object getAiResponse() {
