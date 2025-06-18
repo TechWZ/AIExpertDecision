@@ -148,7 +148,7 @@ const goToExpertList = () => {
             <el-row class="analysis-angles-row">
               <el-col :span="24">
                 <div class="analysis-angles-container">
-                  <label class="analysis-angles-label">分析角度：</label>
+                  <label class="analysis-angles-label">决策重点：</label>
                   <div class="tag-input-container">
                     <el-tag v-for="tag in analysisAngles" :key="tag" closable :disable-transitions="false"
                       @close="handleClose(tag)" class="analysis-tag">
@@ -162,7 +162,6 @@ const goToExpertList = () => {
             </el-row>
           </el-col>
         </el-row>
-
 
         <div class="button-group">
           <el-button type="primary" size="large" :disabled="!newMessage.trim()" @click="sendMessage"
