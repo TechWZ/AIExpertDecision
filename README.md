@@ -1,7 +1,10 @@
 # AIExpertDecision
 AI专家决策
 ## 当前进度
-打通Spring AI调用单个大模型功能。
+- 主线功能6月17日已完成
+- 未完成
+  - bug未进行解决，刚要开始陆续解决
+  - 边缘功能
 ## 使用方式
 ### server
 - 服务端Spring+Java工程
@@ -10,7 +13,9 @@ AI专家决策
 spring:
   ai:
     openai:
-      # api-key: YOUR_ACTUAL_DEEPSEEK_API_KEY # 请将 YOUR_ACTUAL_DEEPSEEK_API_KEY 替换为你的真实的硅基流动的API Key，或者在此文件中添加其它大模型api信息以覆盖application.yml中的相关配置。
+      api-key: [github出现api key的话，该api key会被封禁]
+openrouter:
+    api-key: [github出现api key的话，该api key会被封禁]
 ```
 ### web
 - web端Vue3+ElementPlus工程
