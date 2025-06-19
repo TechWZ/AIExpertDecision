@@ -124,7 +124,7 @@ const goToExpertList = () => {
         <div class="example-questions">
           <el-card v-for="(example, index) in exampleQuestions" :key="index" class="example-card" shadow="hover"
             @click="handleExampleClick(example)">
-            <div class="example-content">
+            <div class="example-content" style="padding:0px">
               <el-icon class="example-icon">
                 <QuestionFilled />
               </el-icon>
@@ -139,43 +139,41 @@ const goToExpertList = () => {
   <!-- 输入区域 -->
   <el-row class="input-row">
     <el-col :span="24">
-      <div class="input-container">
-        <el-row>
-          <el-col>
-            <el-input v-model="newMessage" type="textarea" placeholder="输入您的决策需求..." :autosize="{ minRows: 4 }"
-              resize="none" class="message-input" />
-            <!-- 分析角度输入域 -->
-            <el-row class="analysis-angles-row">
-              <el-col :span="24">
-                <div class="analysis-angles-container">
-                  <label class="analysis-angles-label">决策重点：</label>
-                  <div class="tag-input-container">
-                    <el-tag v-for="tag in analysisAngles" :key="tag" closable :disable-transitions="false"
-                      @close="handleClose(tag)" class="analysis-tag">
-                      {{ tag }}
-                    </el-tag>
-                    <el-input v-model="inputValue" size="small" @keyup="handleInputKeyup" @blur="handleInputConfirm"
-                      placeholder="输入分析角度，按空格键添加" class="tag-input" style="width: 200px;" />
-                  </div>
+      <el-row>
+        <el-col>
+          <el-input v-model="newMessage" type="textarea" placeholder="输入您的决策需求..." :autosize="{ minRows: 4 }"
+            resize="none" class="message-input" />
+          <!-- 分析角度输入域 -->
+          <el-row class="analysis-angles-row">
+            <el-col :span="24">
+              <div class="analysis-angles-container">
+                <div class="tag-input-container">
+                  <el-tag v-for="tag in analysisAngles" :key="tag" closable :disable-transitions="false"
+                    @close="handleClose(tag)" class="analysis-tag">
+                    {{ tag }}
+                  </el-tag>
+                  <el-input v-model="inputValue" size="small" @keyup="handleInputKeyup" @blur="handleInputConfirm"
+                    placeholder="输入决策重点，按空格键添加" class="tag-input" style="width: 200px;" />
                 </div>
-              </el-col>
-            </el-row>
-          </el-col>
-        </el-row>
+              </div>
+            </el-col>
+          </el-row>
+        </el-col>
+      </el-row>
 
-        <div class="button-group">
-          <el-button type="primary" size="large" :disabled="!newMessage.trim()" @click="sendMessage"
-            class="send-button">
+      <el-row>
+        <el-col>
+          <el-button type="primary" size="large" :disabled="!newMessage.trim()" @click="sendMessage">
             推荐专家角色
           </el-button>
-          <el-button size="large" class="custom-button" @click="goToExpertList">
+          <el-button size="large" @click="goToExpertList">
             自定义专家
           </el-button>
-          <el-select v-model="selectedModel" placeholder="选择模型" size="large" style="width: 100%">
+          <el-select v-model="selectedModel" placeholder="选择模型" size="large">
             <el-option v-for="item in modelOptions" :key="item.value" :label="item.label" :value="item.value" />
           </el-select>
-        </div>
-      </div>
+        </el-col>
+      </el-row>
     </el-col>
   </el-row>
 
@@ -238,33 +236,8 @@ const goToExpertList = () => {
   min-height: 200px;
 }
 
-.input-container {
-  max-width: 600px;
-  margin: 0 auto;
-  display: flex;
-  gap: 12px;
-}
-
 .message-input {
   flex: 1;
-}
-
-.button-group {
-  display: flex;
-  flex-direction: column;
-  row-gap: 10px;
-  width: 140px;
-}
-
-.send-button {
-  font-size: 14px;
-  width: 100%;
-}
-
-.custom-button {
-  font-size: 14px;
-  width: 100%;
-  margin-left: 0;
 }
 
 .analysis-angles-row {
@@ -277,12 +250,6 @@ const goToExpertList = () => {
   display: flex;
   align-items: center;
   gap: 12px;
-}
-
-.analysis-angles-label {
-  font-size: 14px;
-  color: #606266;
-  white-space: nowrap;
 }
 
 .tag-input-container {
